@@ -1,0 +1,95 @@
+#!/usr/bin/env bash
+
+# ==============================================================================
+# 🚀 Automated Deployment Script: University Maintenance System (MIT 8333)
+# Target OS: Ubuntu / Debian Linux
+# ==============================================================================
+
+set -e
+
+# Color definitions
+GREEN='\033[0;32m'
+CYAN='\033[0;36m'
+YELLOW='\033[1;33m'
+RED='\033[0;31m'
+NC='\033[0m' # No Color
+
+echo -e "${CYAN}======================================================================${NC}"
+echo -e "${GREEN} 🏛️ MIVA Open University - Maintenance System Deployment Script${NC}"
+echo -e "${CYAN}======================================================================${NC}"
+
+# 1. Check Root / Sudo
+if [ "$EUID" -ne 0 ]; then
+  echo -e "${YELLOW}⚠️ Notice: Script not running as root. Sudo privileges may be requested.${NC}"
+fi
+
+# 2. Check & Install Docker
+echo -e "\n${CYAN}[1/5] Checking Docker installation...${NC}"
+if ! command -v docker &> /dev/null; then
+    echo -e "${YELLOW}Docker not found. Installing Docker & Docker Compose...${NC}"
+    sudo apt-get update -y
+    sudo apt-get install -y ca-certificates curl gnupg lsb-release
+    sudo mkdir -p /etc/apt/keyrings
+    curl -fsSL https://download.docker.com/linux/ubuntu/gpg | sudo gpg --dearmor -o /etc/apt/keyrings/docker.gpg --yes
+    echo "deb [arch=$(dpkg --print-architecture) signed-by=/etc/apt/keyrings/docker.gpg] https://download.docker.com/linux/ubuntu $(lsb_release -cs) stable" | sudo tee /etc/apt/sources.list.d/docker.list > /dev/null
+    sudo apt-get update -y
+    sudo apt-get install -y docker-ce docker-ce-cli containerd.io docker-compose-plugin
+    sudo usermod -aG docker $USER || true
+    echo -e "${GREEN}✓ Docker installed successfully.${NC}"
+else
+    echo -e "${GREEN}✓ Docker is already installed: $(docker --version)${NC}"
+fi
+
+# 3. Prepare Environment Config
+echo -e "\n${CYAN}[2/5] Setting up environment configuration (.env.local)...${NC}"
+if [ ! -f .env.local ]; then
+    cat <<EOT > .env.local
+DATABASE_TYPE=mysql
+MYSQL_HOST=db
+MYSQL_PORT=3306
+MYSQL_USER=miva_user
+MYSQL_PASSWORD=MivaPassword123!
+MYSQL_DATABASE=miva_maintenance
+JWT_SECRET=super-secret-miva-key-12345
+EOT
+    echo -e "${GREEN}✓ Created default .env.local file.${NC}"
+else
+    echo -e "${GREEN}✓ Existing .env.local file found.${NC}"
+fi
+
+# 4. Build & Launch Docker Containers
+echo -e "\n${CYAN}[3/5] Building and launching application containers...${NC}"
+sudo docker compose up --build -d
+
+# 5. Health Verification
+echo -e "\n${CYAN}[4/5] Verifying application health...${NC}"
+echo -n "Waiting for MySQL and Web app to initialize..."
+for i in {1..20}; do
+    if sudo docker compose ps | grep -q "healthy"; then
+        echo -e "\n${GREEN}✓ MySQL Database service is healthy!${NC}"
+        break
+    fi
+    echo -n "."
+    sleep 2
+done
+
+# 6. Summary Output
+SERVER_IP=$(curl -s ifconfig.me || echo "localhost")
+
+echo -e "\n${CYAN}[5/5] Deployment Complete!${NC}"
+echo -e "${CYAN}======================================================================${NC}"
+echo -e "${GREEN} 🎉 Application successfully deployed and running!${NC}"
+echo -e "${CYAN}======================================================================${NC}"
+echo -e " 🌐 Web Portal URL  : ${YELLOW}http://${SERVER_IP}:3000${NC}"
+echo -e " 🗄️ Database Engine : ${YELLOW}MySQL 8.0 (Containerized)${NC}"
+echo -e "${CYAN}----------------------------------------------------------------------${NC}"
+echo -e " 🔐 Default Login Accounts:${NC}"
+echo -e "   • Student/Staff       : ${GREEN}student@miva.edu${NC}  /  ${GREEN}student123${NC}"
+echo -e "   • Maintenance Officer : ${GREEN}officer@miva.edu${NC}  /  ${GREEN}officer123${NC}"
+echo -e "   • Administrator       : ${GREEN}admin@miva.edu${NC}    /  ${GREEN}admin123${NC}"
+echo -e "${CYAN}======================================================================${NC}"
+echo -e " 💡 Useful Management Commands:"
+echo -e "   • View logs      : ${YELLOW}sudo docker compose logs -f web${NC}"
+echo -e "   • Stop server    : ${YELLOW}sudo docker compose down${NC}"
+echo -e "   • Restart server : ${YELLOW}sudo docker compose restart${NC}"
+echo -e "${CYAN}======================================================================${NC}\n"
