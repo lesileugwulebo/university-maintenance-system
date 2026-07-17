@@ -1,0 +1,75 @@
+datasource db {
+  provider = "sqlite"
+  url      = "file:./dev.db"
+}
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+model Role {
+  id    Int    @id @default(autoincrement())
+  name  String @unique // "ADMINISTRATOR", "MAINTENANCE_OFFICER", "STUDENT_STAFF"
+  users User[]
+}
+
+model User {
+  id           Int          @id @default(autoincrement())
+  email        String       @unique
+  username     String       @unique
+  password     String
+  fullName     String
+  roleId       Int
+  role         Role         @relation(fields: [roleId], references: [id])
+  requests     Request[]    @relation("Creator")
+  assignments  Assignment[] @relation("Officer")
+  assignedBy   Assignment[] @relation("Assigner")
+  statusLogs   StatusLog[]
+  createdAt    DateTime     @default(now())
+}
+
+model RequestCategory {
+  id       Int       @id @default(autoincrement())
+  name     String    @unique // "Faulty Electricity", "Damaged Furniture", "Leaking Pipes", "Internet Problems", "Classroom Equipment", "Hostel Maintenance"
+  requests Request[]
+}
+
+model Request {
+  id           Int             @id @default(autoincrement())
+  title        String
+  description  String
+  categoryId   Int
+  category     RequestCategory @relation(fields: [categoryId], references: [id])
+  status       String          @default("PENDING") // "PENDING", "ASSIGNED", "IN_PROGRESS", "COMPLETED"
+  priority     String          @default("MEDIUM")  // "LOW", "MEDIUM", "HIGH", "CRITICAL"
+  imagePath    String?         // Local path to uploaded evidence image
+  creatorId    Int
+  creator      User            @relation("Creator", fields: [creatorId], references: [id])
+  assignments  Assignment[]
+  statusLogs   StatusLog[]
+  createdAt    DateTime        @default(now())
+  updatedAt    DateTime        @updatedAt
+}
+
+model Assignment {
+  id           Int      @id @default(autoincrement())
+  requestId    Int
+  request      Request  @relation(fields: [requestId], references: [id], onDelete: Cascade)
+  officerId    Int
+  officer      User     @relation("Officer", fields: [officerId], references: [id])
+  assignedById Int
+  assignedBy   User     @relation("Assigner", fields: [assignedById], references: [id])
+  assignedAt   DateTime @default(now())
+}
+
+model StatusLog {
+  id             Int      @id @default(autoincrement())
+  requestId      Int
+  request        Request  @relation(fields: [requestId], references: [id], onDelete: Cascade)
+  userId         Int
+  user           User     @relation(fields: [userId], references: [id])
+  previousStatus String
+  newStatus      String
+  comment        String?
+  createdAt      DateTime @default(now())
+}
