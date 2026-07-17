@@ -2,7 +2,7 @@
 
 # ==============================================================================
 # 🚀 Automated Deployment Script: University Maintenance System (MIT 8333)
-# Target OS: Ubuntu / Debian Linux
+# Target OS: Ubuntu / Debian / RHEL / Linux Server
 # ==============================================================================
 
 set -e
@@ -15,32 +15,50 @@ RED='\033[0;31m'
 NC='\033[0m' # No Color
 
 echo -e "${CYAN}======================================================================${NC}"
-echo -e "${GREEN} 🏛️ MIVA Open University - Maintenance System Deployment Script${NC}"
+echo -e "${GREEN} 🏛️ MIVA Open University - Automated Docker Deployment Script${NC}"
 echo -e "${CYAN}======================================================================${NC}"
 
-# 1. Check Root / Sudo
+# 1. Check Root / Sudo Privileges
 if [ "$EUID" -ne 0 ]; then
-  echo -e "${YELLOW}⚠️ Notice: Script not running as root. Sudo privileges may be requested.${NC}"
+  echo -e "${YELLOW}⚠️ Notice: Running with sudo helper for system installations.${NC}"
 fi
 
-# 2. Check & Install Docker
-echo -e "\n${CYAN}[1/5] Checking Docker installation...${NC}"
+# 2. Automated Docker & Docker Compose Installation Module
+echo -e "\n${CYAN}[1/5] Checking Docker & Docker Compose installation...${NC}"
+
 if ! command -v docker &> /dev/null; then
-    echo -e "${YELLOW}Docker not found. Installing Docker & Docker Compose...${NC}"
-    sudo apt-get update -y
-    sudo apt-get install -y ca-certificates curl gnupg lsb-release
-    sudo mkdir -p /etc/apt/keyrings
-    curl -fsSL https://download.docker.com/linux/ubuntu/gpg | sudo gpg --dearmor -o /etc/apt/keyrings/docker.gpg --yes
-    echo "deb [arch=$(dpkg --print-architecture) signed-by=/etc/apt/keyrings/docker.gpg] https://download.docker.com/linux/ubuntu $(lsb_release -cs) stable" | sudo tee /etc/apt/sources.list.d/docker.list > /dev/null
-    sudo apt-get update -y
-    sudo apt-get install -y docker-ce docker-ce-cli containerd.io docker-compose-plugin
+    echo -e "${YELLOW}🐳 Docker is not installed on this server. Installing Docker Engine...${NC}"
+    
+    # Download and run official Docker installation script (supports Ubuntu, Debian, CentOS, Fedora, RHEL)
+    curl -fsSL https://get.docker.com -o get-docker.sh
+    sudo sh get-docker.sh
+    rm -f get-docker.sh
+
+    # Enable & Start Docker systemd service
+    sudo systemctl enable --now docker
+    
+    # Add current user to docker security group
     sudo usermod -aG docker $USER || true
-    echo -e "${GREEN}✓ Docker installed successfully.${NC}"
+
+    echo -e "${GREEN}✓ Docker Engine installed successfully!${NC}"
 else
     echo -e "${GREEN}✓ Docker is already installed: $(docker --version)${NC}"
 fi
 
-# 3. Prepare Environment Config
+# Verify Docker Compose Plugin
+if ! docker compose version &> /dev/null; then
+    echo -e "${YELLOW}Installing Docker Compose plugin...${NC}"
+    if command -v apt-get &> /dev/null; then
+        sudo apt-get update -y && sudo apt-get install -y docker-compose-plugin
+    elif command -v yum &> /dev/null; then
+        sudo yum install -y docker-compose-plugin
+    fi
+    echo -e "${GREEN}✓ Docker Compose plugin installed!${NC}"
+else
+    echo -e "${GREEN}✓ Docker Compose is ready: $(docker compose version)${NC}"
+fi
+
+# 3. Prepare Environment Configuration
 echo -e "\n${CYAN}[2/5] Setting up environment configuration (.env.local)...${NC}"
 if [ ! -f .env.local ]; then
     cat <<EOT > .env.local
@@ -63,10 +81,10 @@ sudo docker compose up --build -d
 
 # 5. Health Verification
 echo -e "\n${CYAN}[4/5] Verifying application health...${NC}"
-echo -n "Waiting for MySQL and Web app to initialize..."
-for i in {1..20}; do
+echo -n "Waiting for MySQL database and Web application to initialize..."
+for i in {1..25}; do
     if sudo docker compose ps | grep -q "healthy"; then
-        echo -e "\n${GREEN}✓ MySQL Database service is healthy!${NC}"
+        echo -e "\n${GREEN}✓ MySQL Database service is healthy and online!${NC}"
         break
     fi
     echo -n "."
@@ -74,7 +92,7 @@ for i in {1..20}; do
 done
 
 # 6. Summary Output
-SERVER_IP=$(curl -s ifconfig.me || echo "localhost")
+SERVER_IP=$(curl -s ifconfig.me || curl -s icanhazip.com || echo "localhost")
 
 echo -e "\n${CYAN}[5/5] Deployment Complete!${NC}"
 echo -e "${CYAN}======================================================================${NC}"
