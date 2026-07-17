@@ -13,15 +13,15 @@ export async function GET(req: Request) {
     const { searchParams } = new URL(req.url);
     const roleParam = searchParams.get('role');
 
-    // Filter for maintenance officers (accessible by admin and officers)
+    // Filter for maintenance officers
     if (roleParam === 'MAINTENANCE_OFFICER') {
-      const officers = db.prepare(`
+      const officers = await db.all(`
         SELECT u.id, u.fullName, u.email 
         FROM User u 
         JOIN Role r ON u.roleId = r.id 
         WHERE r.name = 'MAINTENANCE_OFFICER'
         ORDER BY u.fullName ASC
-      `).all() as any[];
+      `);
       return NextResponse.json({ users: officers });
     }
 
@@ -30,25 +30,25 @@ export async function GET(req: Request) {
       return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
     }
 
-    const userRows = db.prepare(`
+    const userRows = await db.all(`
       SELECT u.id, u.email, u.username, u.fullName, u.roleId, r.name as roleName 
       FROM User u 
       JOIN Role r ON u.roleId = r.id 
       ORDER BY u.fullName ASC
-    `).all() as any[];
+    `);
 
-    const formattedUsers = userRows.map(u => ({
+    const formattedUsers = userRows.map((u) => ({
       id: u.id,
       email: u.email,
       username: u.username,
       fullName: u.fullName,
       roleId: u.roleId,
       role: {
-        name: u.roleName
-      }
+        name: u.roleName,
+      },
     }));
 
-    const roles = db.prepare('SELECT * FROM Role').all();
+    const roles = await db.all('SELECT * FROM Role');
 
     return NextResponse.json({ users: formattedUsers, roles });
   } catch (error) {
@@ -77,9 +77,10 @@ export async function POST(req: Request) {
     }
 
     // Check conflict
-    const existing = db.prepare(
-      'SELECT id FROM User WHERE email = ? OR username = ?'
-    ).get(email, username);
+    const existing = await db.get(
+      'SELECT id FROM User WHERE email = ? OR username = ?',
+      [email, username]
+    );
 
     if (existing) {
       return NextResponse.json(
@@ -89,13 +90,16 @@ export async function POST(req: Request) {
     }
 
     const hashedPassword = hashPassword(password);
-    const result = db.prepare(`
+    const result = await db.run(`
       INSERT INTO User (email, username, password, fullName, roleId)
       VALUES (?, ?, ?, ?, ?)
-    `).run(email, username, hashedPassword, fullName, parseInt(roleId));
+    `, [email, username, hashedPassword, fullName, parseInt(roleId)]);
 
     const userId = Number(result.lastInsertRowid);
-    const createdUser = db.prepare('SELECT id, email, username, fullName, roleId FROM User WHERE id = ?').get(userId);
+    const createdUser = await db.get(
+      'SELECT id, email, username, fullName, roleId FROM User WHERE id = ?',
+      [userId]
+    );
 
     return NextResponse.json({ user: createdUser }, { status: 201 });
   } catch (error) {
@@ -126,9 +130,10 @@ export async function PUT(req: Request) {
     const userId = parseInt(id);
 
     // Validate conflicts
-    const conflict = db.prepare(
-      'SELECT id FROM User WHERE id != ? AND (email = ? OR username = ?)'
-    ).get(userId, email, username);
+    const conflict = await db.get(
+      'SELECT id FROM User WHERE id != ? AND (email = ? OR username = ?)',
+      [userId, email, username]
+    );
 
     if (conflict) {
       return NextResponse.json(
@@ -139,20 +144,23 @@ export async function PUT(req: Request) {
 
     if (password && password.trim() !== '') {
       const hashedPassword = hashPassword(password);
-      db.prepare(`
+      await db.run(`
         UPDATE User 
         SET email = ?, username = ?, fullName = ?, roleId = ?, password = ? 
         WHERE id = ?
-      `).run(email, username, fullName, parseInt(roleId), hashedPassword, userId);
+      `, [email, username, fullName, parseInt(roleId), hashedPassword, userId]);
     } else {
-      db.prepare(`
+      await db.run(`
         UPDATE User 
         SET email = ?, username = ?, fullName = ?, roleId = ? 
         WHERE id = ?
-      `).run(email, username, fullName, parseInt(roleId), userId);
+      `, [email, username, fullName, parseInt(roleId), userId]);
     }
 
-    const updatedUser = db.prepare('SELECT id, email, username, fullName, roleId FROM User WHERE id = ?').get(userId);
+    const updatedUser = await db.get(
+      'SELECT id, email, username, fullName, roleId FROM User WHERE id = ?',
+      [userId]
+    );
 
     return NextResponse.json({ user: updatedUser });
   } catch (error) {

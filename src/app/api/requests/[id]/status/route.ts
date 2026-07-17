@@ -21,18 +21,20 @@ export async function PUT(
     }
 
     // Retrieve request
-    const request = db.prepare(
-      'SELECT id, creatorId, status FROM Request WHERE id = ?'
-    ).get(requestId) as any;
+    const request = await db.get(
+      'SELECT id, creatorId, status FROM Request WHERE id = ?',
+      [requestId]
+    );
 
     if (!request) {
       return NextResponse.json({ error: 'Request not found' }, { status: 404 });
     }
 
     // Fetch assignments
-    const assignments = db.prepare(
-      'SELECT officerId FROM Assignment WHERE requestId = ?'
-    ).all(requestId) as any[];
+    const assignments = await db.all(
+      'SELECT officerId FROM Assignment WHERE requestId = ?',
+      [requestId]
+    );
 
     const previousStatus = request.status;
 
@@ -65,33 +67,25 @@ export async function PUT(
       return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
     }
 
-    // Run transaction
-    db.exec('BEGIN TRANSACTION');
-    try {
-      db.prepare(`
-        UPDATE Request 
-        SET status = ?, updatedAt = CURRENT_TIMESTAMP 
-        WHERE id = ?
-      `).run(status, requestId);
+    // Update Request status & log
+    await db.run(`
+      UPDATE Request 
+      SET status = ?, updatedAt = CURRENT_TIMESTAMP 
+      WHERE id = ?
+    `, [status, requestId]);
 
-      db.prepare(`
-        INSERT INTO StatusLog (requestId, userId, previousStatus, newStatus, comment)
-        VALUES (?, ?, ?, ?, ?)
-      `).run(
-        requestId,
-        user.id,
-        previousStatus,
-        status,
-        comment || `Status updated from ${previousStatus} to ${status}.`
-      );
+    await db.run(`
+      INSERT INTO StatusLog (requestId, userId, previousStatus, newStatus, comment)
+      VALUES (?, ?, ?, ?, ?)
+    `, [
+      requestId,
+      user.id,
+      previousStatus,
+      status,
+      comment || `Status updated from ${previousStatus} to ${status}.`,
+    ]);
 
-      db.exec('COMMIT');
-    } catch (txError) {
-      db.exec('ROLLBACK');
-      throw txError;
-    }
-
-    const updatedRequest = db.prepare('SELECT * FROM Request WHERE id = ?').get(requestId);
+    const updatedRequest = await db.get('SELECT * FROM Request WHERE id = ?', [requestId]);
 
     return NextResponse.json({ request: updatedRequest });
   } catch (error) {

@@ -15,13 +15,13 @@ export async function GET(
     const { id } = await params;
     const requestId = parseInt(id);
 
-    const request = db.prepare(`
+    const request = await db.get(`
       SELECT r.*, c.name as categoryName, u.fullName as creatorName, u.email as creatorEmail
       FROM Request r
       JOIN RequestCategory c ON r.categoryId = c.id
       JOIN User u ON r.creatorId = u.id
       WHERE r.id = ?
-    `).get(requestId) as any;
+    `, [requestId]);
 
     if (!request) {
       return NextResponse.json({ error: 'Request not found' }, { status: 404 });
@@ -33,13 +33,13 @@ export async function GET(
     }
 
     // Fetch assignments
-    const assignments = db.prepare(`
+    const assignments = await db.all(`
       SELECT a.*, o.fullName as officerName, o.email as officerEmail, b.fullName as assignerName
       FROM Assignment a
       JOIN User o ON a.officerId = o.id
       JOIN User b ON a.assignedById = b.id
       WHERE a.requestId = ?
-    `).all(requestId) as any[];
+    `, [requestId]);
 
     if (user.role.name === 'MAINTENANCE_OFFICER') {
       const isAssigned = assignments.some(
@@ -51,14 +51,14 @@ export async function GET(
     }
 
     // Fetch status logs
-    const statusLogs = db.prepare(`
+    const statusLogs = await db.all(`
       SELECT l.*, u.fullName as userName, r.name as roleName
       FROM StatusLog l
       JOIN User u ON l.userId = u.id
       JOIN Role r ON u.roleId = r.id
       WHERE l.requestId = ?
       ORDER BY l.createdAt ASC
-    `).all(requestId) as any[];
+    `, [requestId]);
 
     // Format output object
     const formattedRequest = {
@@ -73,26 +73,26 @@ export async function GET(
       createdAt: request.createdAt,
       updatedAt: request.updatedAt,
       category: {
-        name: request.categoryName
+        name: request.categoryName,
       },
       creator: {
         id: request.creatorId,
         fullName: request.creatorName,
-        email: request.creatorEmail
+        email: request.creatorEmail,
       },
-      assignments: assignments.map(a => ({
+      assignments: assignments.map((a) => ({
         id: a.id,
         officerId: a.officerId,
         officer: {
           id: a.officerId,
           fullName: a.officerName,
-          email: a.officerEmail
+          email: a.officerEmail,
         },
         assignedBy: {
-          fullName: a.assignerName
-        }
+          fullName: a.assignerName,
+        },
       })),
-      statusLogs: statusLogs.map(l => ({
+      statusLogs: statusLogs.map((l) => ({
         id: l.id,
         newStatus: l.newStatus,
         previousStatus: l.previousStatus,
@@ -101,10 +101,10 @@ export async function GET(
         user: {
           fullName: l.userName,
           role: {
-            name: l.roleName
-          }
-        }
-      }))
+            name: l.roleName,
+          },
+        },
+      })),
     };
 
     return NextResponse.json({ request: formattedRequest });
@@ -134,8 +134,8 @@ export async function DELETE(
     const { id } = await params;
     const requestId = parseInt(id);
 
-    // Delete request. SQLite ON DELETE CASCADE will handle Assignment and StatusLog table cleanup automatically.
-    db.prepare('DELETE FROM Request WHERE id = ?').run(requestId);
+    // Delete request. CASCADE will handle Assignment and StatusLog cleanup
+    await db.run('DELETE FROM Request WHERE id = ?', [requestId]);
 
     return NextResponse.json({ success: true });
   } catch (error) {

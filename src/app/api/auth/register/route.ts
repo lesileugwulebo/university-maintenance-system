@@ -15,9 +15,10 @@ export async function POST(req: Request) {
     }
 
     // Check if user already exists
-    const existingUser = db.prepare(
-      'SELECT id FROM User WHERE email = ? OR username = ?'
-    ).get(email, username);
+    const existingUser = await db.get(
+      'SELECT id FROM User WHERE email = ? OR username = ?',
+      [email, username]
+    );
 
     if (existingUser) {
       return NextResponse.json(
@@ -27,9 +28,10 @@ export async function POST(req: Request) {
     }
 
     // Get the default role for registering users
-    const studentRole = db.prepare(
-      'SELECT id FROM Role WHERE name = ?'
-    ).get('STUDENT_STAFF') as any;
+    const studentRole = await db.get(
+      'SELECT id FROM Role WHERE name = ?',
+      ['STUDENT_STAFF']
+    );
 
     if (!studentRole) {
       return NextResponse.json(
@@ -40,10 +42,10 @@ export async function POST(req: Request) {
 
     // Hash password and create user
     const hashedPassword = hashPassword(password);
-    const result = db.prepare(`
+    const result = await db.run(`
       INSERT INTO User (email, username, password, fullName, roleId)
       VALUES (?, ?, ?, ?, ?)
-    `).run(email, username, hashedPassword, fullName, studentRole.id);
+    `, [email, username, hashedPassword, fullName, studentRole.id]);
 
     const userId = Number(result.lastInsertRowid);
 
@@ -63,7 +65,7 @@ export async function POST(req: Request) {
 
     response.headers.set(
       'Set-Cookie',
-      `${COOKIE_NAME}=${token}; Path=/; HttpOnly; SameSite=Lax; Max-Age=${60 * 60 * 24 * 7}` // 7 days
+      `${COOKIE_NAME}=${token}; Path=/; HttpOnly; SameSite=Lax; Max-Age=${60 * 60 * 24 * 7}`
     );
 
     return response;

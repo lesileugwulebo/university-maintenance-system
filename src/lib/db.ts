@@ -1,189 +1,211 @@
+import mysql from 'mysql2/promise';
 import { DatabaseSync } from 'node:sqlite';
 import { join } from 'path';
 import { hashPassword } from './crypto';
 
 const dbPath = join(process.cwd(), 'dev.db');
-export const db = new DatabaseSync(dbPath);
+let sqliteDb: DatabaseSync = new DatabaseSync(dbPath);
+let mysqlPool: mysql.Pool | null = null;
 
-// Initialize DB schema & seed default data on bootstrap
-try {
-  // 1. Create Tables
-  db.exec(`
-    CREATE TABLE IF NOT EXISTS Role (
-      id INTEGER PRIMARY KEY AUTOINCREMENT,
-      name TEXT UNIQUE NOT NULL
-    );
+const USE_MYSQL = process.env.DATABASE_TYPE === 'mysql' || process.env.MYSQL_HOST !== undefined;
 
-    CREATE TABLE IF NOT EXISTS User (
-      id INTEGER PRIMARY KEY AUTOINCREMENT,
-      email TEXT UNIQUE NOT NULL,
-      username TEXT UNIQUE NOT NULL,
-      password TEXT NOT NULL,
-      fullName TEXT NOT NULL,
-      roleId INTEGER NOT NULL,
-      createdAt DATETIME DEFAULT CURRENT_TIMESTAMP,
-      FOREIGN KEY(roleId) REFERENCES Role(id)
-    );
-
-    CREATE TABLE IF NOT EXISTS RequestCategory (
-      id INTEGER PRIMARY KEY AUTOINCREMENT,
-      name TEXT UNIQUE NOT NULL
-    );
-
-    CREATE TABLE IF NOT EXISTS Request (
-      id INTEGER PRIMARY KEY AUTOINCREMENT,
-      title TEXT NOT NULL,
-      description TEXT NOT NULL,
-      categoryId INTEGER NOT NULL,
-      status TEXT DEFAULT 'PENDING', -- PENDING, ASSIGNED, IN_PROGRESS, COMPLETED, CANCELLED
-      priority TEXT DEFAULT 'MEDIUM', -- LOW, MEDIUM, HIGH, CRITICAL
-      imagePath TEXT,
-      creatorId INTEGER NOT NULL,
-      createdAt DATETIME DEFAULT CURRENT_TIMESTAMP,
-      updatedAt DATETIME DEFAULT CURRENT_TIMESTAMP,
-      FOREIGN KEY(categoryId) REFERENCES RequestCategory(id),
-      FOREIGN KEY(creatorId) REFERENCES User(id)
-    );
-
-    CREATE TABLE IF NOT EXISTS Assignment (
-      id INTEGER PRIMARY KEY AUTOINCREMENT,
-      requestId INTEGER NOT NULL,
-      officerId INTEGER NOT NULL,
-      assignedById INTEGER NOT NULL,
-      assignedAt DATETIME DEFAULT CURRENT_TIMESTAMP,
-      FOREIGN KEY(requestId) REFERENCES Request(id) ON DELETE CASCADE,
-      FOREIGN KEY(officerId) REFERENCES User(id),
-      FOREIGN KEY(assignedById) REFERENCES User(id)
-    );
-
-    CREATE TABLE IF NOT EXISTS StatusLog (
-      id INTEGER PRIMARY KEY AUTOINCREMENT,
-      requestId INTEGER NOT NULL,
-      userId INTEGER NOT NULL,
-      previousStatus TEXT NOT NULL,
-      newStatus TEXT NOT NULL,
-      comment TEXT,
-      createdAt DATETIME DEFAULT CURRENT_TIMESTAMP,
-      FOREIGN KEY(requestId) REFERENCES Request(id) ON DELETE CASCADE,
-      FOREIGN KEY(userId) REFERENCES User(id)
-    );
-  `);
-
-  // 2. Seed default data if User table is empty
-  const userCheck = db.prepare("SELECT COUNT(*) as count FROM User").get() as { count: number };
-  
-  if (userCheck.count === 0) {
-    console.log('Seeding SQLite database with default roles, categories, and accounts...');
-    
-    // Seed Roles
-    const insertRole = db.prepare("INSERT OR IGNORE INTO Role (name) VALUES (?)");
-    insertRole.run('ADMINISTRATOR');
-    insertRole.run('MAINTENANCE_OFFICER');
-    insertRole.run('STUDENT_STAFF');
-
-    // Fetch Role IDs
-    const getRole = db.prepare("SELECT id FROM Role WHERE name = ?");
-    const adminRoleId = (getRole.get('ADMINISTRATOR') as any).id;
-    const officerRoleId = (getRole.get('MAINTENANCE_OFFICER') as any).id;
-    const studentRoleId = (getRole.get('STUDENT_STAFF') as any).id;
-
-    // Seed Request Categories
-    const insertCategory = db.prepare("INSERT OR IGNORE INTO RequestCategory (name) VALUES (?)");
-    const categories = [
-      'Faulty Electricity',
-      'Damaged Furniture',
-      'Leaking Pipes',
-      'Internet Problems',
-      'Classroom Equipment',
-      'Hostel Maintenance',
-    ];
-    categories.forEach(cat => insertCategory.run(cat));
-
-    // Fetch Category IDs
-    const getCat = db.prepare("SELECT id FROM RequestCategory WHERE name = ?");
-    const electricityCatId = (getCat.get('Faulty Electricity') as any).id;
-    const internetCatId = (getCat.get('Internet Problems') as any).id;
-    const furnitureCatId = (getCat.get('Damaged Furniture') as any).id;
-
-    // Seed Default Users
-    const insertUser = db.prepare(`
-      INSERT OR IGNORE INTO User (email, username, password, fullName, roleId)
-      VALUES (?, ?, ?, ?, ?)
-    `);
-    
-    const adminPw = hashPassword('admin123');
-    const officerPw = hashPassword('officer123');
-    const studentPw = hashPassword('student123');
-
-    insertUser.run('admin@miva.edu', 'admin', adminPw, 'Principal Administrator', adminRoleId);
-    insertUser.run('officer@miva.edu', 'officer', officerPw, 'John Doe (Maintenance)', officerRoleId);
-    insertUser.run('student@miva.edu', 'student', studentPw, 'Alice Smith (Student)', studentRoleId);
-
-    // Fetch User IDs
-    const getUser = db.prepare("SELECT id FROM User WHERE email = ?");
-    const adminUserId = (getUser.get('admin@miva.edu') as any).id;
-    const officerUserId = (getUser.get('officer@miva.edu') as any).id;
-    const studentUserId = (getUser.get('student@miva.edu') as any).id;
-
-    // Seed Sample Requests
-    const insertRequest = db.prepare(`
-      INSERT INTO Request (title, description, categoryId, priority, status, creatorId)
-      VALUES (?, ?, ?, ?, ?, ?)
-    `);
-
-    const insertLog = db.prepare(`
-      INSERT INTO StatusLog (requestId, userId, previousStatus, newStatus, comment)
-      VALUES (?, ?, ?, ?, ?)
-    `);
-
-    const insertAsg = db.prepare(`
-      INSERT INTO Assignment (requestId, officerId, assignedById)
-      VALUES (?, ?, ?)
-    `);
-
-    // Request 1: Pending electricity report
-    const req1 = insertRequest.run(
-      'A/C unit leaking water in Lecture Room 3',
-      'The split unit air conditioner is constantly leaking water onto the floor, making it slippery and dangerous for lectures.',
-      electricityCatId,
-      'HIGH',
-      'PENDING',
-      studentUserId
-    );
-    const req1Id = req1.lastInsertRowid;
-    insertLog.run(req1Id, studentUserId, 'NONE', 'PENDING', 'Initial request submitted by student.');
-
-    // Request 2: Assigned internet router issue
-    const req2 = insertRequest.run(
-      'Hostel Block B Wifi Router Offline',
-      'The router on the 2nd floor of Block B has no power light. No internet connection since last night.',
-      internetCatId,
-      'CRITICAL',
-      'ASSIGNED',
-      studentUserId
-    );
-    const req2Id = req2.lastInsertRowid;
-    insertLog.run(req2Id, studentUserId, 'NONE', 'PENDING', 'Initial request submitted.');
-    insertLog.run(req2Id, adminUserId, 'PENDING', 'ASSIGNED', 'Router offline reported. Assigned to John for immediate repair.');
-    insertAsg.run(req2Id, officerUserId, adminUserId);
-
-    // Request 3: Completed furniture repair
-    const req3 = insertRequest.run(
-      'Broken chair armrests in Seminar Room B',
-      'Three chairs in the back row have loose or broken wooden armrests. Need fixing or replacement.',
-      furnitureCatId,
-      'LOW',
-      'COMPLETED',
-      studentUserId
-    );
-    const req3Id = req3.lastInsertRowid;
-    insertLog.run(req3Id, studentUserId, 'NONE', 'PENDING', 'Initial request.');
-    insertLog.run(req3Id, adminUserId, 'PENDING', 'ASSIGNED', 'Assigned to maintenance team.');
-    insertLog.run(req3Id, officerUserId, 'ASSIGNED', 'COMPLETED', 'Fixed with wood glue and screws. Chairs are back in order.');
-    insertAsg.run(req3Id, officerUserId, adminUserId);
-
-    console.log('Database successfully seeded.');
+if (USE_MYSQL) {
+  try {
+    const mysqlConfig = {
+      host: process.env.MYSQL_HOST || 'localhost',
+      port: parseInt(process.env.MYSQL_PORT || '3306'),
+      user: process.env.MYSQL_USER || 'root',
+      password: process.env.MYSQL_PASSWORD || '',
+      database: process.env.MYSQL_DATABASE || 'miva_maintenance',
+      waitForConnections: true,
+      connectionLimit: 10,
+      queueLimit: 0,
+    };
+    mysqlPool = mysql.createPool(mysqlConfig);
+  } catch (err) {
+    console.warn('⚠️ Could not initialize MySQL pool. Using SQLite fallback.');
+    mysqlPool = null;
   }
-} catch (error) {
-  console.error('SQLite Database Initialization Error:', error);
 }
+
+export const db = {
+  isMySQL(): boolean {
+    return mysqlPool !== null;
+  },
+
+  async query(sql: string, params: any[] = []): Promise<any> {
+    if (mysqlPool) {
+      try {
+        const [rows] = await mysqlPool.query(sql, params);
+        return rows;
+      } catch (err: any) {
+        if (err.code === 'ECONNREFUSED' || err.code === 'ENOTFOUND' || err.code === 'ER_ACCESS_DENIED_ERROR' || err.code === 'ER_BAD_DB_ERROR') {
+          console.warn(`⚠️ MySQL (${err.code}). Falling back to SQLite...`);
+          mysqlPool = null;
+          return this.query(sql, params);
+        }
+        throw err;
+      }
+    }
+    const stmt = sqliteDb.prepare(sql);
+    return stmt.all(...params);
+  },
+
+  async get(sql: string, params: any[] = []): Promise<any> {
+    if (mysqlPool) {
+      try {
+        const [rows]: any = await mysqlPool.query(sql, params);
+        return rows && rows.length > 0 ? rows[0] : null;
+      } catch (err: any) {
+        if (err.code === 'ECONNREFUSED' || err.code === 'ENOTFOUND' || err.code === 'ER_ACCESS_DENIED_ERROR' || err.code === 'ER_BAD_DB_ERROR') {
+          console.warn(`⚠️ MySQL (${err.code}). Falling back to SQLite...`);
+          mysqlPool = null;
+          return this.get(sql, params);
+        }
+        throw err;
+      }
+    }
+    const stmt = sqliteDb.prepare(sql);
+    return stmt.get(...params);
+  },
+
+  async all(sql: string, params: any[] = []): Promise<any[]> {
+    if (mysqlPool) {
+      try {
+        const [rows]: any = await mysqlPool.query(sql, params);
+        return rows as any[];
+      } catch (err: any) {
+        if (err.code === 'ECONNREFUSED' || err.code === 'ENOTFOUND' || err.code === 'ER_ACCESS_DENIED_ERROR' || err.code === 'ER_BAD_DB_ERROR') {
+          console.warn(`⚠️ MySQL (${err.code}). Falling back to SQLite...`);
+          mysqlPool = null;
+          return this.all(sql, params);
+        }
+        throw err;
+      }
+    }
+    const stmt = sqliteDb.prepare(sql);
+    return stmt.all(...params) as any[];
+  },
+
+  async run(sql: string, params: any[] = []): Promise<{ lastInsertRowid: number; changes: number }> {
+    if (mysqlPool) {
+      try {
+        const [result]: any = await mysqlPool.query(sql, params);
+        return {
+          lastInsertRowid: Number(result.insertId || 0),
+          changes: Number(result.affectedRows || 0),
+        };
+      } catch (err: any) {
+        if (err.code === 'ECONNREFUSED' || err.code === 'ENOTFOUND' || err.code === 'ER_ACCESS_DENIED_ERROR' || err.code === 'ER_BAD_DB_ERROR') {
+          console.warn(`⚠️ MySQL (${err.code}). Falling back to SQLite...`);
+          mysqlPool = null;
+          return this.run(sql, params);
+        }
+        throw err;
+      }
+    }
+    const stmt = sqliteDb.prepare(sql);
+    const res = stmt.run(...params);
+    return {
+      lastInsertRowid: Number(res.lastInsertRowid || 0),
+      changes: Number(res.changes || 0),
+    };
+  },
+
+  async exec(sql: string): Promise<void> {
+    if (mysqlPool) {
+      try {
+        await mysqlPool.query(sql);
+        return;
+      } catch (err: any) {
+        if (err.code === 'ECONNREFUSED' || err.code === 'ENOTFOUND' || err.code === 'ER_ACCESS_DENIED_ERROR' || err.code === 'ER_BAD_DB_ERROR') {
+          mysqlPool = null;
+          return this.exec(sql);
+        }
+        throw err;
+      }
+    }
+    sqliteDb.exec(sql);
+  },
+
+  prepare(sql: string) {
+    return {
+      get: (...params: any[]) => this.get(sql, params),
+      all: (...params: any[]) => this.all(sql, params),
+      run: (...params: any[]) => this.run(sql, params),
+    };
+  },
+};
+
+async function initDatabase() {
+  try {
+    if (mysqlPool) {
+      try {
+        await mysqlPool.query(`CREATE TABLE IF NOT EXISTS Role (id INT AUTO_INCREMENT PRIMARY KEY, name VARCHAR(255) UNIQUE NOT NULL);`);
+        await mysqlPool.query(`CREATE TABLE IF NOT EXISTS User (id INT AUTO_INCREMENT PRIMARY KEY, email VARCHAR(255) UNIQUE NOT NULL, username VARCHAR(255) UNIQUE NOT NULL, password VARCHAR(255) NOT NULL, fullName VARCHAR(255) NOT NULL, roleId INT NOT NULL, createdAt DATETIME DEFAULT CURRENT_TIMESTAMP, FOREIGN KEY(roleId) REFERENCES Role(id));`);
+        await mysqlPool.query(`CREATE TABLE IF NOT EXISTS RequestCategory (id INT AUTO_INCREMENT PRIMARY KEY, name VARCHAR(255) UNIQUE NOT NULL);`);
+        await mysqlPool.query(`CREATE TABLE IF NOT EXISTS Request (id INT AUTO_INCREMENT PRIMARY KEY, title VARCHAR(255) NOT NULL, description TEXT NOT NULL, categoryId INT NOT NULL, status VARCHAR(50) DEFAULT 'PENDING', priority VARCHAR(50) DEFAULT 'MEDIUM', imagePath VARCHAR(500), creatorId INT NOT NULL, createdAt DATETIME DEFAULT CURRENT_TIMESTAMP, updatedAt DATETIME DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP, FOREIGN KEY(categoryId) REFERENCES RequestCategory(id), FOREIGN KEY(creatorId) REFERENCES User(id));`);
+        await mysqlPool.query(`CREATE TABLE IF NOT EXISTS Assignment (id INT AUTO_INCREMENT PRIMARY KEY, requestId INT NOT NULL, officerId INT NOT NULL, assignedById INT NOT NULL, assignedAt DATETIME DEFAULT CURRENT_TIMESTAMP, FOREIGN KEY(requestId) REFERENCES Request(id) ON DELETE CASCADE, FOREIGN KEY(officerId) REFERENCES User(id), FOREIGN KEY(assignedById) REFERENCES User(id));`);
+        await mysqlPool.query(`CREATE TABLE IF NOT EXISTS StatusLog (id INT AUTO_INCREMENT PRIMARY KEY, requestId INT NOT NULL, userId INT NOT NULL, previousStatus VARCHAR(50) NOT NULL, newStatus VARCHAR(50) NOT NULL, comment TEXT, createdAt DATETIME DEFAULT CURRENT_TIMESTAMP, FOREIGN KEY(requestId) REFERENCES Request(id) ON DELETE CASCADE, FOREIGN KEY(userId) REFERENCES User(id));`);
+
+        const [userRows]: any = await mysqlPool.query("SELECT COUNT(*) as count FROM User");
+        if (userRows[0].count === 0) {
+          console.log('🌱 Seeding MySQL database with default roles, categories, and accounts...');
+          await mysqlPool.query("INSERT IGNORE INTO Role (name) VALUES ('ADMINISTRATOR'), ('MAINTENANCE_OFFICER'), ('STUDENT_STAFF')");
+          const [adminRole]: any = await mysqlPool.query("SELECT id FROM Role WHERE name = 'ADMINISTRATOR'");
+          const [officerRole]: any = await mysqlPool.query("SELECT id FROM Role WHERE name = 'MAINTENANCE_OFFICER'");
+          const [studentRole]: any = await mysqlPool.query("SELECT id FROM Role WHERE name = 'STUDENT_STAFF'");
+
+          const categories = ['Faulty Electricity', 'Damaged Furniture', 'Leaking Pipes', 'Internet Problems', 'Classroom Equipment', 'Hostel Maintenance'];
+          for (const cat of categories) {
+            await mysqlPool.query("INSERT IGNORE INTO RequestCategory (name) VALUES (?)", [cat]);
+          }
+
+          await mysqlPool.query("INSERT IGNORE INTO User (email, username, password, fullName, roleId) VALUES (?, ?, ?, ?, ?)", ['admin@miva.edu', 'admin', hashPassword('admin123'), 'Principal Administrator', adminRole[0].id]);
+          await mysqlPool.query("INSERT IGNORE INTO User (email, username, password, fullName, roleId) VALUES (?, ?, ?, ?, ?)", ['officer@miva.edu', 'officer', hashPassword('officer123'), 'John Doe (Maintenance)', officerRole[0].id]);
+          await mysqlPool.query("INSERT IGNORE INTO User (email, username, password, fullName, roleId) VALUES (?, ?, ?, ?, ?)", ['student@miva.edu', 'student', hashPassword('student123'), 'Alice Smith (Student)', studentRole[0].id]);
+        }
+        return;
+      } catch (err: any) {
+        console.warn(`⚠️ MySQL initialization failed (${err.code}). Using SQLite fallback.`);
+        mysqlPool = null;
+      }
+    }
+
+    // SQLite Initialization
+    sqliteDb.exec(`
+      CREATE TABLE IF NOT EXISTS Role (id INTEGER PRIMARY KEY AUTOINCREMENT, name TEXT UNIQUE NOT NULL);
+      CREATE TABLE IF NOT EXISTS User (id INTEGER PRIMARY KEY AUTOINCREMENT, email TEXT UNIQUE NOT NULL, username TEXT UNIQUE NOT NULL, password TEXT NOT NULL, fullName TEXT NOT NULL, roleId INTEGER NOT NULL, createdAt DATETIME DEFAULT CURRENT_TIMESTAMP, FOREIGN KEY(roleId) REFERENCES Role(id));
+      CREATE TABLE IF NOT EXISTS RequestCategory (id INTEGER PRIMARY KEY AUTOINCREMENT, name TEXT UNIQUE NOT NULL);
+      CREATE TABLE IF NOT EXISTS Request (id INTEGER PRIMARY KEY AUTOINCREMENT, title TEXT NOT NULL, description TEXT NOT NULL, categoryId INTEGER NOT NULL, status TEXT DEFAULT 'PENDING', priority TEXT DEFAULT 'MEDIUM', imagePath TEXT, creatorId INTEGER NOT NULL, createdAt DATETIME DEFAULT CURRENT_TIMESTAMP, updatedAt DATETIME DEFAULT CURRENT_TIMESTAMP, FOREIGN KEY(categoryId) REFERENCES RequestCategory(id), FOREIGN KEY(creatorId) REFERENCES User(id));
+      CREATE TABLE IF NOT EXISTS Assignment (id INTEGER PRIMARY KEY AUTOINCREMENT, requestId INTEGER NOT NULL, officerId INTEGER NOT NULL, assignedById INTEGER NOT NULL, assignedAt DATETIME DEFAULT CURRENT_TIMESTAMP, FOREIGN KEY(requestId) REFERENCES Request(id) ON DELETE CASCADE, FOREIGN KEY(officerId) REFERENCES User(id), FOREIGN KEY(assignedById) REFERENCES User(id));
+      CREATE TABLE IF NOT EXISTS StatusLog (id INTEGER PRIMARY KEY AUTOINCREMENT, requestId INTEGER NOT NULL, userId INTEGER NOT NULL, previousStatus TEXT NOT NULL, newStatus TEXT NOT NULL, comment TEXT, createdAt DATETIME DEFAULT CURRENT_TIMESTAMP, FOREIGN KEY(requestId) REFERENCES Request(id) ON DELETE CASCADE, FOREIGN KEY(userId) REFERENCES User(id));
+    `);
+
+    const userCheck = sqliteDb.prepare("SELECT COUNT(*) as count FROM User").get() as { count: number };
+    if (userCheck.count === 0) {
+      console.log('🌱 Seeding database with default roles, categories, and accounts...');
+      const insertRole = sqliteDb.prepare("INSERT OR IGNORE INTO Role (name) VALUES (?)");
+      insertRole.run('ADMINISTRATOR');
+      insertRole.run('MAINTENANCE_OFFICER');
+      insertRole.run('STUDENT_STAFF');
+
+      const getRole = sqliteDb.prepare("SELECT id FROM Role WHERE name = ?");
+      const adminRoleId = (getRole.get('ADMINISTRATOR') as any).id;
+      const officerRoleId = (getRole.get('MAINTENANCE_OFFICER') as any).id;
+      const studentRoleId = (getRole.get('STUDENT_STAFF') as any).id;
+
+      const insertCategory = sqliteDb.prepare("INSERT OR IGNORE INTO RequestCategory (name) VALUES (?)");
+      ['Faulty Electricity', 'Damaged Furniture', 'Leaking Pipes', 'Internet Problems', 'Classroom Equipment', 'Hostel Maintenance'].forEach((cat) => insertCategory.run(cat));
+
+      const insertUser = sqliteDb.prepare("INSERT OR IGNORE INTO User (email, username, password, fullName, roleId) VALUES (?, ?, ?, ?, ?)");
+      insertUser.run('admin@miva.edu', 'admin', hashPassword('admin123'), 'Principal Administrator', adminRoleId);
+      insertUser.run('officer@miva.edu', 'officer', hashPassword('officer123'), 'John Doe (Maintenance)', officerRoleId);
+      insertUser.run('student@miva.edu', 'student', hashPassword('student123'), 'Alice Smith (Student)', studentRoleId);
+    }
+  } catch (err) {
+    console.error('Database Initialization Error:', err);
+  }
+}
+
+initDatabase();

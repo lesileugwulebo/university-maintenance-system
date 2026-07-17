@@ -23,12 +23,12 @@ export default async function DashboardLayout({
   }
 
   // Load user data directly from DB
-  const user = db.prepare(`
+  const user = await db.get(`
     SELECT u.*, r.name as roleName 
     FROM User u 
     JOIN Role r ON u.roleId = r.id 
     WHERE u.id = ?
-  `).get(decoded.userId) as any;
+  `, [decoded.userId]);
 
   if (!user) {
     redirect('/login');

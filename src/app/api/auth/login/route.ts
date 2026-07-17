@@ -5,7 +5,7 @@ import { COOKIE_NAME } from '@/lib/auth';
 
 export async function POST(req: Request) {
   try {
-    const { loginId, password } = await req.json(); // loginId can be email or username
+    const { loginId, password } = await req.json();
 
     if (!loginId || !password) {
       return NextResponse.json(
@@ -15,12 +15,12 @@ export async function POST(req: Request) {
     }
 
     // Find user by email or username
-    const user = db.prepare(`
+    const user = await db.get(`
       SELECT u.*, r.name as roleName 
       FROM User u 
       JOIN Role r ON u.roleId = r.id 
       WHERE u.email = ? OR u.username = ?
-    `).get(loginId, loginId) as any;
+    `, [loginId, loginId]);
 
     if (!user) {
       return NextResponse.json(
@@ -54,7 +54,7 @@ export async function POST(req: Request) {
 
     response.headers.set(
       'Set-Cookie',
-      `${COOKIE_NAME}=${token}; Path=/; HttpOnly; SameSite=Lax; Max-Age=${60 * 60 * 24 * 7}` // 7 days
+      `${COOKIE_NAME}=${token}; Path=/; HttpOnly; SameSite=Lax; Max-Age=${60 * 60 * 24 * 7}`
     );
 
     return response;

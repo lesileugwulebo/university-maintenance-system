@@ -71,53 +71,55 @@ export async function GET(req: Request) {
     query += ' ORDER BY r.createdAt DESC LIMIT ? OFFSET ?';
     
     // Execute count
-    const countResult = db.prepare(countQuery).get(...params) as { count: number };
+    const countResult = await db.get(countQuery, params);
     const total = countResult?.count || 0;
 
     // Execute requests query
-    const requestRows = db.prepare(query).all(...[...params, limit, skip]) as any[];
+    const requestRows = await db.all(query, [...params, limit, skip]);
 
     // Fetch assignments for each request row and map structure
-    const requests = requestRows.map((row) => {
-      const assignments = db.prepare(`
-        SELECT a.*, o.fullName as officerName
-        FROM Assignment a
-        JOIN User o ON a.officerId = o.id
-        WHERE a.requestId = ?
-      `).all(row.id) as any[];
+    const requests = await Promise.all(
+      requestRows.map(async (row) => {
+        const assignments = await db.all(`
+          SELECT a.*, o.fullName as officerName
+          FROM Assignment a
+          JOIN User o ON a.officerId = o.id
+          WHERE a.requestId = ?
+        `, [row.id]);
 
-      const formattedAssignments = assignments.map(a => ({
-        id: a.id,
-        officer: {
-          id: a.officerId,
-          fullName: a.officerName
-        }
-      }));
+        const formattedAssignments = assignments.map((a) => ({
+          id: a.id,
+          officer: {
+            id: a.officerId,
+            fullName: a.officerName,
+          },
+        }));
 
-      return {
-        id: row.id,
-        title: row.title,
-        description: row.description,
-        status: row.status,
-        priority: row.priority,
-        imagePath: row.imagePath,
-        createdAt: row.createdAt,
-        updatedAt: row.updatedAt,
-        category: {
-          name: row.categoryName
-        },
-        creator: {
-          id: row.creatorId,
-          fullName: row.creatorName,
-          email: row.creatorEmail,
-          username: row.creatorUsername
-        },
-        assignments: formattedAssignments
-      };
-    });
+        return {
+          id: row.id,
+          title: row.title,
+          description: row.description,
+          status: row.status,
+          priority: row.priority,
+          imagePath: row.imagePath,
+          createdAt: row.createdAt,
+          updatedAt: row.updatedAt,
+          category: {
+            name: row.categoryName,
+          },
+          creator: {
+            id: row.creatorId,
+            fullName: row.creatorName,
+            email: row.creatorEmail,
+            username: row.creatorUsername,
+          },
+          assignments: formattedAssignments,
+        };
+      })
+    );
 
     // Fetch categories
-    const categories = db.prepare('SELECT * FROM RequestCategory ORDER BY name ASC').all();
+    const categories = await db.all('SELECT * FROM RequestCategory ORDER BY name ASC');
 
     return NextResponse.json({
       requests,
@@ -167,9 +169,10 @@ export async function POST(req: Request) {
     }
 
     const categoryId = parseInt(categoryIdStr);
-    const categoryExists = db.prepare(
-      'SELECT id FROM RequestCategory WHERE id = ?'
-    ).get(categoryId);
+    const categoryExists = await db.get(
+      'SELECT id FROM RequestCategory WHERE id = ?',
+      [categoryId]
+    );
 
     if (!categoryExists) {
       return NextResponse.json(
@@ -193,20 +196,20 @@ export async function POST(req: Request) {
     }
 
     // Insert Request
-    const insertReq = db.prepare(`
+    const insertReq = await db.run(`
       INSERT INTO Request (title, description, categoryId, priority, imagePath, creatorId)
       VALUES (?, ?, ?, ?, ?, ?)
-    `).run(title, description, categoryId, priority, imagePath, user.id);
+    `, [title, description, categoryId, priority, imagePath, user.id]);
 
     const requestId = Number(insertReq.lastInsertRowid);
 
     // Insert Log
-    db.prepare(`
+    await db.run(`
       INSERT INTO StatusLog (requestId, userId, previousStatus, newStatus, comment)
       VALUES (?, ?, ?, ?, ?)
-    `).run(requestId, user.id, 'NONE', 'PENDING', 'Service request created and queued.');
+    `, [requestId, user.id, 'NONE', 'PENDING', 'Service request created and queued.']);
 
-    const newRequest = db.prepare('SELECT * FROM Request WHERE id = ?').get(requestId);
+    const newRequest = await db.get('SELECT * FROM Request WHERE id = ?', [requestId]);
 
     return NextResponse.json({ request: newRequest }, { status: 201 });
   } catch (error: any) {

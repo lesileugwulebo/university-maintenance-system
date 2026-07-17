@@ -22,7 +22,7 @@ export async function POST(req: Request) {
     const oId = parseInt(officerId);
 
     // Verify request
-    const request = db.prepare('SELECT status FROM Request WHERE id = ?').get(rId) as any;
+    const request = await db.get('SELECT status FROM Request WHERE id = ?', [rId]);
     if (!request) {
       return NextResponse.json({ error: 'Request not found' }, { status: 404 });
     }
@@ -30,12 +30,12 @@ export async function POST(req: Request) {
     const previousStatus = request.status;
 
     // Verify officer
-    const officer = db.prepare(`
+    const officer = await db.get(`
       SELECT u.id, u.fullName, r.name as roleName 
       FROM User u 
       JOIN Role r ON u.roleId = r.id 
       WHERE u.id = ?
-    `).get(oId) as any;
+    `, [oId]);
 
     if (!officer || officer.roleName !== 'MAINTENANCE_OFFICER') {
       return NextResponse.json(
@@ -44,48 +44,34 @@ export async function POST(req: Request) {
       );
     }
 
-    // Run transaction
-    db.exec('BEGIN TRANSACTION');
-    try {
-      // 1. Remove previous assignments
-      db.prepare('DELETE FROM Assignment WHERE requestId = ?').run(rId);
+    // 1. Remove previous assignments
+    await db.run('DELETE FROM Assignment WHERE requestId = ?', [rId]);
 
-      // 2. Insert new assignment
-      db.prepare(`
-        INSERT INTO Assignment (requestId, officerId, assignedById)
-        VALUES (?, ?, ?)
-      `).run(rId, oId, user.id);
+    // 2. Insert new assignment
+    await db.run(`
+      INSERT INTO Assignment (requestId, officerId, assignedById)
+      VALUES (?, ?, ?)
+    `, [rId, oId, user.id]);
 
-      // 3. Update request status to ASSIGNED
-      db.prepare(`
-        UPDATE Request 
-        SET status = 'ASSIGNED', updatedAt = CURRENT_TIMESTAMP 
-        WHERE id = ?
-      `).run(rId);
+    // 3. Update request status to ASSIGNED
+    await db.run(`
+      UPDATE Request 
+      SET status = 'ASSIGNED', updatedAt = CURRENT_TIMESTAMP 
+      WHERE id = ?
+    `, [rId]);
 
-      // 4. Create StatusLog entry
-      db.prepare(`
-        INSERT INTO StatusLog (requestId, userId, previousStatus, newStatus, comment)
-        VALUES (?, ?, ?, 'ASSIGNED', ?)
-      `).run(
-        rId,
-        user.id,
-        previousStatus,
-        `Request assigned to ${officer.fullName} by Admin.`
-      );
+    // 4. Create StatusLog entry
+    await db.run(`
+      INSERT INTO StatusLog (requestId, userId, previousStatus, newStatus, comment)
+      VALUES (?, ?, ?, 'ASSIGNED', ?)
+    `, [rId, user.id, previousStatus, `Request assigned to ${officer.fullName} by Admin.`]);
 
-      db.exec('COMMIT');
-    } catch (txError) {
-      db.exec('ROLLBACK');
-      throw txError;
-    }
-
-    const assignment = db.prepare(`
+    const assignment = await db.get(`
       SELECT a.*, o.fullName as officerName 
       FROM Assignment a 
       JOIN User o ON a.officerId = o.id 
       WHERE a.requestId = ?
-    `).get(rId) as any;
+    `, [rId]);
 
     return NextResponse.json({
       success: true,
@@ -93,9 +79,9 @@ export async function POST(req: Request) {
         id: assignment.id,
         officer: {
           id: assignment.officerId,
-          fullName: assignment.officerName
-        }
-      }
+          fullName: assignment.officerName,
+        },
+      },
     });
   } catch (error) {
     console.error('Assignment error:', error);

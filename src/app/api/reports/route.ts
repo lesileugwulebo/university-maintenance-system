@@ -13,7 +13,7 @@ export async function GET(req: Request) {
     const mode = searchParams.get('export');
 
     // Fetch all requests with relational fields
-    const requests = db.prepare(`
+    const requests = await db.all(`
       SELECT r.*, c.name as categoryName, u.fullName as creatorName, u.email as creatorEmail, o.fullName as officerName
       FROM Request r
       JOIN RequestCategory c ON r.categoryId = c.id
@@ -21,7 +21,7 @@ export async function GET(req: Request) {
       LEFT JOIN Assignment a ON r.id = a.requestId
       LEFT JOIN User o ON a.officerId = o.id
       ORDER BY r.createdAt DESC
-    `).all() as any[];
+    `);
 
     if (mode === 'csv') {
       const headers = [
@@ -103,7 +103,7 @@ export async function GET(req: Request) {
     });
 
     // Recent 50 audit logs
-    const auditLogs = db.prepare(`
+    const auditLogs = await db.all(`
       SELECT l.*, r.title as requestTitle, u.fullName as userName, rl.name as roleName
       FROM StatusLog l
       JOIN Request r ON l.requestId = r.id
@@ -111,9 +111,9 @@ export async function GET(req: Request) {
       JOIN Role rl ON u.roleId = rl.id
       ORDER BY l.createdAt DESC
       LIMIT 50
-    `).all() as any[];
+    `);
 
-    const formattedAudit = auditLogs.map(log => ({
+    const formattedAudit = auditLogs.map((log) => ({
       id: log.id,
       requestId: log.requestId,
       previousStatus: log.previousStatus,
@@ -122,14 +122,14 @@ export async function GET(req: Request) {
       createdAt: log.createdAt,
       request: {
         id: log.requestId,
-        title: log.requestTitle
+        title: log.requestTitle,
       },
       user: {
         fullName: log.userName,
         role: {
-          name: log.roleName
-        }
-      }
+          name: log.roleName,
+        },
+      },
     }));
 
     return NextResponse.json({
