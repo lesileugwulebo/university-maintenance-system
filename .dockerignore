@@ -1,0 +1,14 @@
+node_modules
+node_modules_old
+.next
+.git
+.gitignore
+*.db
+*.db-journal
+dev.db
+*.zip
+*.rar
+*.log
+Dockerfile
+docker-compose.yml
+.dockerignore
