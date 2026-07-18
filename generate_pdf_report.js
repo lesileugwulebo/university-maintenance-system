@@ -3,7 +3,7 @@ const fs = require('fs');
 const path = require('path');
 
 const rootDir = process.cwd();
-const pdfPath = path.join(rootDir, 'University_Maintenance_System_MIT8333_Dissertation_Report.pdf');
+const pdfPath = path.join(rootDir, 'University_Maintenance_System_MIT8333_Official_Report.pdf');
 
 const doc = new PDFDocument({
   margin: 40,
@@ -189,7 +189,7 @@ const tocItems = [
   ['  1.3 Requirement Analysis', '9'],
   ['  1.4 Three-Tier Architecture & Database Schema', '10'],
   ['  1.5 Relational Specifications (Role, User, Request, etc.)', '10'],
-  ['  1.6 Challenges Encountered & Solutions', '11'],
+  ['  1.6 Challenges Encountered & Technical Mitigations', '11'],
   ['CHAPTER TWO: LITERATURE REVIEW & THEORETICAL FRAMEWORK', '12'],
   ['  2.1 Review of Campus Maintenance Systems', '12'],
   ['  2.2 Architectural Evolution: Monoliths vs App Router', '12'],
@@ -288,7 +288,7 @@ doc.addPage();
 addTitle('SECTION B: TECHNICAL PROJECT REPORT');
 
 addHeading('1.1 Introduction & Problem Statement');
-addBody('At higher education institutions, maintaining campus physical and digital infrastructure is vital for teaching and learning. Prior to the implementation of this system, MIVA Open University experienced severe operational bottlenecks:');
+addBody('At higher education institutions, maintaining campus physical and technical infrastructure is vital for teaching and learning. Prior to the implementation of this system, MIVA Open University experienced severe operational bottlenecks:');
 addBullet('Fragmented Communication Bottlenecks', 'Complaints were submitted through informal verbal messaging, phone calls, or paper logs, leading to lost tickets and poor accountability.');
 addBullet('Zero Visibility Status Tracking', 'Students and staff had no digital mechanism to check whether reported faults were pending, assigned, or resolved.');
 addBullet('Manual Paper-Routing Delays', 'Facility managers relied on manual paper-based routing to delegate tasks to technicians, creating severe resolution delays.');
@@ -625,5 +625,5 @@ for (let i = 0; i < pages.count; i++) {
 doc.end();
 
 writeStream.on('finish', () => {
-  console.log('✅ Dissertation PDF Document generated at:', pdfPath);
+  console.log('✅ Official Dissertation PDF Document generated at:', pdfPath);
 });
