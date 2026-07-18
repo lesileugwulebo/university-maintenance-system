@@ -29,7 +29,7 @@ echo -e "\n${CYAN}[1/5] Checking Docker & Docker Compose installation...${NC}"
 if ! command -v docker &> /dev/null; then
     echo -e "${YELLOW}🐳 Docker is not installed on this server. Installing Docker Engine...${NC}"
     
-    # Download and run official Docker installation script (supports Ubuntu, Debian, CentOS, Fedora, RHEL)
+    # Download and run official Docker installation script
     curl -fsSL https://get.docker.com -o get-docker.sh
     sudo sh get-docker.sh
     rm -f get-docker.sh
@@ -91,8 +91,10 @@ for i in {1..25}; do
     sleep 2
 done
 
-# 6. Summary Output
-SERVER_IP=$(curl -s ifconfig.me || curl -s icanhazip.com || echo "localhost")
+# 6. Smart Host IP / URL Detection (Supports HOST_IP variable override)
+LOCAL_IP=$(hostname -I 2>/dev/null | awk '{print $1}')
+PUBLIC_IP=$(curl -s --max-time 3 ifconfig.me || curl -s --max-time 3 icanhazip.com || echo "")
+SERVER_IP=${HOST_IP:-${LOCAL_IP:-${PUBLIC_IP:-localhost}}}
 
 echo -e "\n${CYAN}[5/5] Deployment Complete!${NC}"
 echo -e "${CYAN}======================================================================${NC}"
@@ -107,6 +109,7 @@ echo -e "   • Maintenance Officer : ${GREEN}officer@miva.edu${NC}  /  ${GREEN}
 echo -e "   • Administrator       : ${GREEN}admin@miva.edu${NC}    /  ${GREEN}admin123${NC}"
 echo -e "${CYAN}======================================================================${NC}"
 echo -e " 💡 Useful Management Commands:"
+echo -e "   • Custom URL run : ${YELLOW}HOST_IP=localhost ./deploy.sh${NC}"
 echo -e "   • View logs      : ${YELLOW}sudo docker compose logs -f web${NC}"
 echo -e "   • Stop server    : ${YELLOW}sudo docker compose down${NC}"
 echo -e "   • Restart server : ${YELLOW}sudo docker compose restart${NC}"

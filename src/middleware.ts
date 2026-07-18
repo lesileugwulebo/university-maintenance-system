@@ -20,7 +20,7 @@ export function middleware(request: NextRequest) {
       if (parts.length !== 3) {
         throw new Error('Invalid token format');
       }
-      
+
       const payloadStr = atob(parts[1].replace(/-/g, '+').replace(/_/g, '/'));
       const payload = JSON.parse(payloadStr);
 
