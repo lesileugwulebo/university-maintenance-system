@@ -2,7 +2,9 @@ const PDFDocument = require('pdfkit');
 const fs = require('fs');
 const path = require('path');
 
-const pdfPath = path.join(process.cwd(), 'University_Maintenance_System_MIT8333_Report.pdf');
+const rootDir = process.cwd();
+const pdfPath = path.join(rootDir, 'University_Maintenance_System_MIT8333_Master_Submission.pdf');
+
 const doc = new PDFDocument({
   margin: 40,
   size: 'A4',
@@ -12,61 +14,88 @@ const doc = new PDFDocument({
 const writeStream = fs.createWriteStream(pdfPath);
 doc.pipe(writeStream);
 
-// Colors
+// Color Tokens
 const PRIMARY = '#1E293B';
 const SECONDARY = '#0F172A';
 const ACCENT = '#2563EB';
 const TEXT = '#334155';
-const LIGHT_BG = '#F8FAFC';
-const BORDER = '#E2E8F0';
+const CODE_TEXT = '#E2E8F0';
 
-// Helpers
 function addTitle(text) {
-  doc.fillColor(PRIMARY).fontSize(20).font('Helvetica-Bold').text(text);
-  doc.moveDown(0.3);
+  doc.fillColor(PRIMARY).fontSize(18).font('Helvetica-Bold').text(text);
+  doc.moveDown(0.2);
   doc.strokeColor(ACCENT).lineWidth(2).moveTo(40, doc.y).lineTo(555, doc.y).stroke();
-  doc.moveDown(0.8);
+  doc.moveDown(0.6);
 }
 
 function addHeading(text) {
-  doc.moveDown(0.5);
-  doc.fillColor(SECONDARY).fontSize(14).font('Helvetica-Bold').text(text);
-  doc.moveDown(0.3);
+  doc.moveDown(0.4);
+  if (doc.y > 720) doc.addPage();
+  doc.fillColor(SECONDARY).fontSize(13).font('Helvetica-Bold').text(text);
+  doc.moveDown(0.2);
 }
 
 function addSubheading(text) {
-  doc.fillColor(ACCENT).fontSize(11).font('Helvetica-Bold').text(text);
+  if (doc.y > 730) doc.addPage();
+  doc.fillColor(ACCENT).fontSize(10.5).font('Helvetica-Bold').text(text);
   doc.moveDown(0.2);
 }
 
 function addBody(text) {
-  doc.fillColor(TEXT).fontSize(9.5).font('Helvetica').text(text, { align: 'justify', lineGap: 3 });
-  doc.moveDown(0.5);
+  doc.fillColor(TEXT).fontSize(9).font('Helvetica').text(text, { align: 'justify', lineGap: 2.5 });
+  doc.moveDown(0.4);
 }
 
 function addBullet(label, text) {
-  doc.fillColor(TEXT).fontSize(9.5).font('Helvetica-Bold').text(`• ${label}: `, { continued: true });
+  if (doc.y > 735) doc.addPage();
+  doc.fillColor(TEXT).fontSize(9).font('Helvetica-Bold').text(`• ${label}: `, { continued: true });
   doc.font('Helvetica').text(text);
-  doc.moveDown(0.3);
+  doc.moveDown(0.25);
+}
+
+function addCodeBlock(filePath, content) {
+  if (doc.y > 680) doc.addPage();
+  
+  // File Header
+  doc.rect(40, doc.y, 515, 18).fill('#1E293B');
+  doc.fillColor('#60A5FA').fontSize(9).font('Courier-Bold').text(`📁 FILE: ${filePath}`, 48, doc.y + 4);
+  doc.y += 20;
+
+  const lines = content.split('\n');
+  let currentY = doc.y;
+
+  lines.forEach((line, idx) => {
+    if (doc.y > 750) {
+      doc.addPage();
+      currentY = doc.y;
+    }
+    const sanitizedLine = line.replace(/\t/g, '  ');
+    doc.rect(40, doc.y, 515, 11).fill('#0F172A');
+    doc.fillColor('#64748B').fontSize(7.5).font('Courier').text(String(idx + 1).padStart(4, ' '), 45, doc.y + 2, { continued: true });
+    doc.fillColor(CODE_TEXT).fontSize(7.5).font('Courier').text(` | ${sanitizedLine}`, { width: 490 });
+  });
+
+  doc.moveDown(0.6);
 }
 
 // ----------------------------------------------------
-// COVER / HEADER
+// COVER & SUBMISSION METADATA
 // ----------------------------------------------------
-doc.rect(40, 40, 515, 110).fillAndStroke('#EFF6FF', ACCENT);
+doc.rect(40, 40, 515, 120).fillAndStroke('#EFF6FF', ACCENT);
 doc.fillColor('#1E3A8A').fontSize(22).font('Helvetica-Bold').text('MIVA OPEN UNIVERSITY', 55, 55, { align: 'center' });
-doc.fontSize(14).font('Helvetica').text('Department of Computer Science & Information Technology', { align: 'center' });
-doc.moveDown(0.4);
-doc.fontSize(16).font('Helvetica-Bold').text('University Maintenance Service Request System (MIT 8333)', { align: 'center' });
-doc.fontSize(10).font('Helvetica-Oblique').text('Comprehensive Project Report & Technical Documentation', { align: 'center' });
+doc.fontSize(12).font('Helvetica').text('Department of Computer Science & Information Technology', { align: 'center' });
+doc.moveDown(0.3);
+doc.fontSize(15).font('Helvetica-Bold').text('University Maintenance Service Request System (MIT 8333)', { align: 'center' });
+doc.fontSize(10).font('Helvetica-Oblique').text('OFFICIAL MASTER SUBMISSION DOCUMENT (REPORT + SCREENSHOTS + SOURCE CODE)', { align: 'center' });
 
-doc.y = 170;
+doc.y = 175;
 
 // ----------------------------------------------------
-// SECTION E: TESTING AND DEPLOYMENT
+// PART 1: PROJECT REPORT (SECTIONS E & F)
 // ----------------------------------------------------
-addTitle('E. TESTING AND DEPLOYMENT');
+addTitle('PART 1: PROJECT REPORT (SECTIONS E & F)');
 
+addHeading('E. TESTING AND DEPLOYMENT');
 addHeading('E.1 Testing Major Frontend Components');
 addBody('The frontend user interface was systematically tested across three distinct user roles (Student/Staff, Maintenance Officer, and Administrator) to ensure responsive rendering, state persistence, error boundaries, and seamless interactivity:');
 addBullet('Student Dashboard Portal', 'Verified complaint creation form, input validation, priority dropdown selectors, category classification, photo upload previews, request history list, and status badges (PENDING, ASSIGNED, IN_PROGRESS, COMPLETED, CANCELLED).');
@@ -85,11 +114,7 @@ addBody('The application was deployed and verified across three production envir
 
 doc.addPage();
 
-// ----------------------------------------------------
-// SECTION F: TECHNICAL DOCUMENTATION
-// ----------------------------------------------------
-addTitle('F. TECHNICAL DOCUMENTATION');
-
+addHeading('F. TECHNICAL DOCUMENTATION');
 addHeading('F.1 Introduction and Problem Statement');
 addBody('In higher education institutions, maintaining physical and digital infrastructure—lecture hall HVAC, lab electrical fittings, plumbing, and Wi-Fi access points—is essential. Previously, MIVA Open University relied on informal reporting, causing zero status visibility, manual task routing delays, missing audit trails, and an absence of analytical reporting. The University Maintenance Service Request System digitizes and automates this workflow end-to-end.');
 
@@ -189,7 +214,6 @@ doc.text(' 🏁 TEST SUITE COMPLETED: 13 PASSED, 0 FAILED (100% Success Rate)', 
 doc.y = logY + 130;
 
 addHeading('F.9 Deployment Information');
-addBody('The application supports multiple automated and containerized deployment pipelines:');
 addBullet('Automated Linux Script (deploy.sh)', '1-click deployment script with Docker Engine auto-installer, HOST_IP detection, and health checks.');
 addBullet('Docker Compose Multi-Container', 'Containerized web app (miva_web_app) and MySQL 8.0 (miva_mysql_db) with named volumes (mysql_data, uploads_data).');
 addBullet('AWS EC2 & Amazon ECR', 'AWS cloud hosting with ECR image repository, Nginx reverse proxying, and PM2 process management.');
@@ -202,15 +226,111 @@ addBullet('Docker Container Ownership', 'Configured Dockerfile to grant explicit
 addHeading('F.11 Conclusion');
 addBody('The University Maintenance Service Request System (MIT 8333) satisfies all academic, technical, security, testing, and deployment requirements. By integrating Next.js 16, MySQL 8.0, glassmorphism UI design, automated testing, and Docker containerization, the platform delivers an enterprise-ready solution for MIVA Open University.');
 
+// ----------------------------------------------------
+// PART 2: SCREENSHOTS OF MAJOR INTERFACES
+// ----------------------------------------------------
+doc.addPage();
+addTitle('PART 2: SCREENSHOTS OF MAJOR INTERFACES & OUTPUT');
+
+addSubheading('1. Student / Staff Service Request Portal');
+addBody('Demonstrates student login session, complaint submission modal with photo uploads, priority badges (HIGH, CRITICAL), category filter tags, and personal ticket history list.');
+
+const studentPic = path.join(rootDir, 'student_dashboard_screenshot_1784325057826.png');
+const artifactStudentPic = path.join('C:\\Users\\Anna\\.gemini\\antigravity-ide\\brain\\66a0f71a-9ffc-421c-8530-c49216f0135e', 'student_dashboard_screenshot_1784325057826.png');
+const targetPic1 = fs.existsSync(studentPic) ? studentPic : fs.existsSync(artifactStudentPic) ? artifactStudentPic : null;
+if (targetPic1) {
+  doc.image(targetPic1, { fit: [515, 230], align: 'center' });
+  doc.moveDown(0.5);
+}
+
+addSubheading('2. Administrator Operations Console');
+addBody('Demonstrates summary metrics cards, status distribution breakdown, complaint search bar, officer work order assignment modal, user management interface, and CSV export action.');
+
+const adminPic = path.join(rootDir, 'admin_dashboard_screenshot_1784325078183.png');
+const artifactAdminPic = path.join('C:\\Users\\Anna\\.gemini\\antigravity-ide\\brain\\66a0f71a-9ffc-421c-8530-c49216f0135e', 'admin_dashboard_screenshot_1784325078183.png');
+const targetPic2 = fs.existsSync(adminPic) ? adminPic : fs.existsSync(artifactAdminPic) ? artifactAdminPic : null;
+if (targetPic2) {
+  if (doc.y > 500) doc.addPage();
+  doc.image(targetPic2, { fit: [515, 230], align: 'center' });
+  doc.moveDown(0.5);
+}
+
+doc.addPage();
+addSubheading('3. Maintenance Officer Work Order Drawer');
+addBody('Demonstrates officer assigned work order drawer, ticket problem description, attached photo evidence preview, status update buttons (IN_PROGRESS, COMPLETED), and resolution comments.');
+
+const officerPic = path.join(rootDir, 'officer_dashboard_screenshot_1784325104208.png');
+const artifactOfficerPic = path.join('C:\\Users\\Anna\\.gemini\\antigravity-ide\\brain\\66a0f71a-9ffc-421c-8530-c49216f0135e', 'officer_dashboard_screenshot_1784325104208.png');
+const targetPic3 = fs.existsSync(officerPic) ? officerPic : fs.existsSync(artifactOfficerPic) ? artifactOfficerPic : null;
+if (targetPic3) {
+  doc.image(targetPic3, { fit: [515, 230], align: 'center' });
+  doc.moveDown(0.5);
+}
+
+// ----------------------------------------------------
+// PART 3: COMPLETE SOURCE CODE BASE
+// ----------------------------------------------------
+doc.addPage();
+addTitle('PART 3: COMPLETE SOURCE CODE BASE');
+addBody('The following section contains the full, complete source code for all configuration files, database drivers, authentication helpers, middleware, API route handlers, frontend views, test suites, Docker manifests, and deployment scripts.');
+
+const codeFiles = [
+  'package.json',
+  'next.config.ts',
+  'tsconfig.json',
+  'Dockerfile',
+  'docker-compose.yml',
+  '.env.example',
+  'deploy.sh',
+  'src/middleware.ts',
+  'src/lib/db.ts',
+  'src/lib/auth.ts',
+  'src/lib/crypto.ts',
+  'src/lib/upload.ts',
+  'src/app/layout.tsx',
+  'src/app/page.tsx',
+  'src/app/login/page.tsx',
+  'src/app/register/page.tsx',
+  'src/app/dashboard/layout.tsx',
+  'src/app/dashboard/student/page.tsx',
+  'src/app/dashboard/officer/page.tsx',
+  'src/app/dashboard/admin/page.tsx',
+  'src/app/dashboard/admin/users/page.tsx',
+  'src/app/api/auth/login/route.ts',
+  'src/app/api/auth/register/route.ts',
+  'src/app/api/auth/me/route.ts',
+  'src/app/api/requests/route.ts',
+  'src/app/api/requests/[id]/route.ts',
+  'src/app/api/requests/[id]/status/route.ts',
+  'src/app/api/assignments/route.ts',
+  'src/app/api/users/route.ts',
+  'src/app/api/reports/route.ts',
+  'tests/system-verification.js',
+];
+
+codeFiles.forEach((fileRelPath) => {
+  const fullPath = path.join(rootDir, fileRelPath);
+  if (fs.existsSync(fullPath)) {
+    const content = fs.readFileSync(fullPath, 'utf8');
+    addCodeBlock(fileRelPath, content);
+  }
+});
+
 // Page Numbers
 const pages = doc.bufferedPageRange();
 for (let i = 0; i < pages.count; i++) {
   doc.switchToPage(i);
-  doc.fillColor('#94A3B8').fontSize(8).font('Helvetica').text(`Page ${i + 1} of ${pages.count}  |  MIVA Open University - MIT 8333 Technical Report`, 40, 800, { align: 'center' });
+  doc.fillColor('#94A3B8').fontSize(8).font('Helvetica').text(`Page ${i + 1} of ${pages.count}  |  MIVA Open University - MIT 8333 Master Submission PDF`, 40, 800, { align: 'center' });
 }
 
 doc.end();
 
 writeStream.on('finish', () => {
-  console.log('✅ PDF Report successfully generated at:', pdfPath);
+  console.log('✅ Master PDF Report successfully generated at:', pdfPath);
+  try {
+    const legacyPath = path.join(rootDir, 'University_Maintenance_System_MIT8333_Report.pdf');
+    fs.copyFileSync(pdfPath, legacyPath);
+  } catch (err) {
+    // legacy path locked, ignore
+  }
 });
