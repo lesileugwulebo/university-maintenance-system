@@ -1,81 +1,85 @@
 # 🏛️ University Maintenance Service Request System (MIT 8333)
-## MIVA Open University — Maintenance & Facilities Portal
+**Institution**: MIVA Open University  
+**Project**: Maintenance Complaint Management & Work Order Tracking Portal  
+**GitHub Repository**: [lesileugwulebo/university-maintenance-system](https://github.com/lesileugwulebo/university-maintenance-system)
 
 ---
 
-## 📌 Project Overview
-The **University Maintenance Service Request System** is a full-stack Next.js web application engineered for raising, tracking, assigning, and auditing university facility complaints. The system features a zero-dependency architecture (using Node.js native `node:sqlite` database and `crypto` modules), glassmorphic UI styling, edge middleware authorization, role-based dashboards, and CSV spreadsheet report generation.
+## 📖 Master System Overview
+
+The **University Maintenance Service Request System** is a full-stack, enterprise-grade web application built to digitize, route, track, and report campus maintenance complaints for students, staff, technicians, and administrators.
 
 ---
 
-## 🔑 Default Access Accounts
+## ⚡ Tech Stack & Architecture
 
-The SQLite database (`dev.db`) auto-initializes and seeds default accounts on boot:
-
-| Role | Email | Password | Primary Dashboard Capabilities |
-| :--- | :--- | :--- | :--- |
-| **Student / Staff** | `student@miva.edu` | `student123` | Log maintenance complaints, attach images, filter/search requests, view timeline, cancel pending tickets. |
-| **Maintenance Officer** | `officer@miva.edu` | `officer123` | View assigned work orders, update ticket status (`IN_PROGRESS` ➔ `COMPLETED`), record resolution notes. |
-| **Administrator** | `admin@miva.edu` | `admin123` | Overview metrics, route tickets to officers, user account management, view audit history, export CSV reports. |
+- **Frontend**: Next.js 16 (App Router), React 19, Vanilla CSS Modules (Glassmorphism Dark Theme, custom CSS variables, responsive layout grids).
+- **Backend**: Node.js v22 Next.js Route Handlers (`/api/*`).
+- **Database Engine**: Relational **MySQL 8.0** (`mysql2/promise` connection pool) with lazy-instantiated SQLite fallback (`node:sqlite`).
+- **Authentication**: `HMAC-SHA256` signed JWTs in HTTP-only, `SameSite=Lax` cookies with `scryptSync` salted password hashing.
+- **Authorization**: Next.js Edge Middleware (`middleware.ts`) enforcing Role-Based Access Control (RBAC).
+- **Containerization**: Multi-stage production `Dockerfile` and `docker-compose.yml` with persistent named data volumes (`mysql_data`, `uploads_data`).
+- **Automation**: 1-click Linux deployment script (`deploy.sh`) with auto-installer for Docker Engine.
 
 ---
 
 ## 🚀 Quick Start Guide
 
-### Prerequisites
-- Node.js version `22.5.0` or higher (tested on Node v26.4.0). No external database server required.
-
-### Installation & Execution
-1. Open terminal in the project root directory.
-2. Install minimal core dependencies:
-   ```bash
-   npm install
-   ```
-3. Launch the development server:
-   ```bash
-   npm run dev
-   ```
-4. Access the portal in your browser:
-   ```text
-   http://localhost:3000
-   ```
-
-### Running Automated Test Suite
-To execute the automated end-to-end integration test suite:
+### Option 1: Automated 1-Click Linux Deployment (Recommended)
+On any clean Ubuntu / Debian Linux server:
 ```bash
-node tests/system-verification.js
+git clone https://github.com/lesileugwulebo/university-maintenance-system.git miva_ass
+cd miva_ass
+chmod +x deploy.sh && ./deploy.sh
 ```
+*(Custom IP/URL support: `HOST_IP=localhost ./deploy.sh` or `HOST_IP=yourdomain.com ./deploy.sh`)*
+
+### Option 2: Docker Compose (Local or Cloud)
+```bash
+docker compose up --build -d
+```
+
+### Option 3: Local Node.js Development
+```bash
+npm install
+npm run dev
+```
+Open [http://localhost:3000](http://localhost:3000) in your browser.
 
 ---
 
-## 📂 Project Structure
+## 🔐 Default Seed Accounts
 
-```text
-miva_ass/
-├── src/
-│   ├── app/                    # Next.js App Router (pages & API endpoints)
-│   │   ├── api/                # REST API handlers (auth, requests, assignments, users, reports)
-│   │   ├── dashboard/          # Role-based dashboard views (student, officer, admin)
-│   │   ├── login/              # Authentication login page
-│   │   ├── register/           # Account registration page
-│   │   ├── globals.css         # Global CSS imports
-│   │   ├── layout.tsx          # Root HTML layout
-│   │   └── page.tsx            # Main landing redirect
-│   ├── components/             # Reusable UI components (Sidebar, RequestCard)
-│   ├── lib/                    # Core libraries (db.ts, auth.ts, crypto.ts, upload.ts)
-│   └── styles/                 # Vanilla CSS Modules (variables, main, dashboard, forms, tables)
-├── public/                     # Static assets & user upload storage
-├── tests/                      # Automated test scripts (system-verification.js)
-├── prisma/                     # Database schema & seed reference definitions
-├── TECHNICAL_PROJECT_REPORT.md # Comprehensive academic technical report (Section F)
-├── WALKTHROUGH.md              # User guide & operational verification report
-├── package.json                # Project configuration & dependencies
-├── next.config.ts              # Next.js compiler settings
-└── tsconfig.json               # TypeScript compiler configuration
-```
+| Role | Email | Password | Allowed Dashboards |
+| :--- | :--- | :--- | :--- |
+| **Student / Staff** | `student@miva.edu` | `student123` | `/dashboard/student` |
+| **Maintenance Officer** | `officer@miva.edu` | `officer123` | `/dashboard/officer` |
+| **Administrator** | `admin@miva.edu` | `admin123` | `/dashboard/admin`, `/dashboard/admin/users` |
 
 ---
 
-## 📄 Documentation Included
-- **`TECHNICAL_PROJECT_REPORT.md`**: Complete technical documentation including Problem Statement, System Objectives, Requirement Analysis, Technology Stack, ER Database Schema & Relationships, API Specifications, Test Results, and Challenges.
-- **`WALKTHROUGH.md`**: Feature guide, user role summary, and verification report.
+## 📚 Documentation Index
+
+| Document | Description | Path |
+| :--- | :--- | :--- |
+| 🎓 **Academic Technical Report** | Full academic report with problem statement, system objectives, requirement analysis, ER schema, API reference, screenshots, test results, and deployment details. | [TECHNICAL_PROJECT_REPORT.md](file:///g:/My%20Drive/2026/MivaProjject/miva_ass/TECHNICAL_PROJECT_REPORT.md) |
+| 🐳 **Docker Containerization Guide** | Guide for multi-stage Docker build, persistent volumes, non-root permissions, and `docker-compose.yml`. | [DOCKER_CONTAINER_GUIDE.md](file:///g:/My%20Drive/2026/MivaProjject/miva_ass/DOCKER_CONTAINER_GUIDE.md) |
+| 🐧 **Ubuntu Docker Deployment** | Step-by-step guide for hosting on Ubuntu Linux using Docker Compose and `deploy.sh`. | [UBUNTU_DOCKER_DEPLOYMENT_GUIDE.md](file:///g:/My%20Drive/2026/MivaProjject/miva_ass/UBUNTU_DOCKER_DEPLOYMENT_GUIDE.md) |
+| ☁️ **AWS EC2 Hosting Guide** | Detailed guide for launching AWS EC2 Ubuntu instances, configuring Security Groups, Nginx, and PM2. | [AWS_EC2_DEPLOYMENT_GUIDE.md](file:///g:/My%20Drive/2026/MivaProjject/miva_ass/AWS_EC2_DEPLOYMENT_GUIDE.md) |
+| 📦 **Amazon ECR Guide** | Step-by-step instructions for publishing Docker images to Amazon ECR and pulling on production servers. | [AWS_ECR_DEPLOYMENT_GUIDE.md](file:///g:/My%20Drive/2026/MivaProjject/miva_ass/AWS_ECR_DEPLOYMENT_GUIDE.md) |
+| 🛠️ **Linux Manual Guide** | Non-containerized Linux deployment guide using Node.js, PM2, MySQL, and Nginx. | [LINUX_DEPLOYMENT_GUIDE.md](file:///g:/My%20Drive/2026/MivaProjject/miva_ass/LINUX_DEPLOYMENT_GUIDE.md) |
+| 🧪 **System Walkthrough** | Feature walkthrough with test execution evidence and UI screenshot references. | [WALKTHROUGH.md](file:///g:/My%20Drive/2026/MivaProjject/miva_ass/WALKTHROUGH.md) |
+
+---
+
+## 🧪 Testing & Verification
+
+Automated integration test runner status (`tests/system-verification.js`):
+- **Result**: **13 PASSED, 0 FAILED** (100% Success Rate)
+
+---
+
+## 📦 Project Submission Archives
+
+- 📦 **[University_Maintenance_System_MIT8333.zip](file:///g:/My%20Drive/2026/MivaProjject/miva_ass/University_Maintenance_System_MIT8333.zip)**
+- 📦 **[University_Maintenance_System_MIT8333.rar](file:///g:/My%20Drive/2026/MivaProjject/miva_ass/University_Maintenance_System_MIT8333.rar)**
