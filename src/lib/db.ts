@@ -3,9 +3,16 @@ import { DatabaseSync } from 'node:sqlite';
 import { join } from 'path';
 import { hashPassword } from './crypto';
 
-const dbPath = join(process.cwd(), 'dev.db');
-let sqliteDb: DatabaseSync = new DatabaseSync(dbPath);
+let sqliteDbInstance: DatabaseSync | null = null;
 let mysqlPool: mysql.Pool | null = null;
+
+function getSqliteDb(): DatabaseSync {
+  if (!sqliteDbInstance) {
+    const dbPath = join(process.cwd(), 'dev.db');
+    sqliteDbInstance = new DatabaseSync(dbPath);
+  }
+  return sqliteDbInstance;
+}
 
 const USE_MYSQL = process.env.DATABASE_TYPE === 'mysql' || process.env.MYSQL_HOST !== undefined;
 
@@ -47,7 +54,7 @@ export const db = {
         throw err;
       }
     }
-    const stmt = sqliteDb.prepare(sql);
+    const stmt = getSqliteDb().prepare(sql);
     return stmt.all(...params);
   },
 
@@ -65,7 +72,7 @@ export const db = {
         throw err;
       }
     }
-    const stmt = sqliteDb.prepare(sql);
+    const stmt = getSqliteDb().prepare(sql);
     return stmt.get(...params);
   },
 
@@ -83,7 +90,7 @@ export const db = {
         throw err;
       }
     }
-    const stmt = sqliteDb.prepare(sql);
+    const stmt = getSqliteDb().prepare(sql);
     return stmt.all(...params) as any[];
   },
 
@@ -104,7 +111,7 @@ export const db = {
         throw err;
       }
     }
-    const stmt = sqliteDb.prepare(sql);
+    const stmt = getSqliteDb().prepare(sql);
     const res = stmt.run(...params);
     return {
       lastInsertRowid: Number(res.lastInsertRowid || 0),
@@ -125,7 +132,7 @@ export const db = {
         throw err;
       }
     }
-    sqliteDb.exec(sql);
+    getSqliteDb().exec(sql);
   },
 
   prepare(sql: string) {
@@ -173,7 +180,8 @@ async function initDatabase() {
     }
 
     // SQLite Initialization
-    sqliteDb.exec(`
+    const sqlite = getSqliteDb();
+    sqlite.exec(`
       CREATE TABLE IF NOT EXISTS Role (id INTEGER PRIMARY KEY AUTOINCREMENT, name TEXT UNIQUE NOT NULL);
       CREATE TABLE IF NOT EXISTS User (id INTEGER PRIMARY KEY AUTOINCREMENT, email TEXT UNIQUE NOT NULL, username TEXT UNIQUE NOT NULL, password TEXT NOT NULL, fullName TEXT NOT NULL, roleId INTEGER NOT NULL, createdAt DATETIME DEFAULT CURRENT_TIMESTAMP, FOREIGN KEY(roleId) REFERENCES Role(id));
       CREATE TABLE IF NOT EXISTS RequestCategory (id INTEGER PRIMARY KEY AUTOINCREMENT, name TEXT UNIQUE NOT NULL);
@@ -182,23 +190,23 @@ async function initDatabase() {
       CREATE TABLE IF NOT EXISTS StatusLog (id INTEGER PRIMARY KEY AUTOINCREMENT, requestId INTEGER NOT NULL, userId INTEGER NOT NULL, previousStatus TEXT NOT NULL, newStatus TEXT NOT NULL, comment TEXT, createdAt DATETIME DEFAULT CURRENT_TIMESTAMP, FOREIGN KEY(requestId) REFERENCES Request(id) ON DELETE CASCADE, FOREIGN KEY(userId) REFERENCES User(id));
     `);
 
-    const userCheck = sqliteDb.prepare("SELECT COUNT(*) as count FROM User").get() as { count: number };
+    const userCheck = sqlite.prepare("SELECT COUNT(*) as count FROM User").get() as { count: number };
     if (userCheck.count === 0) {
       console.log('🌱 Seeding database with default roles, categories, and accounts...');
-      const insertRole = sqliteDb.prepare("INSERT OR IGNORE INTO Role (name) VALUES (?)");
+      const insertRole = sqlite.prepare("INSERT OR IGNORE INTO Role (name) VALUES (?)");
       insertRole.run('ADMINISTRATOR');
       insertRole.run('MAINTENANCE_OFFICER');
       insertRole.run('STUDENT_STAFF');
 
-      const getRole = sqliteDb.prepare("SELECT id FROM Role WHERE name = ?");
+      const getRole = sqlite.prepare("SELECT id FROM Role WHERE name = ?");
       const adminRoleId = (getRole.get('ADMINISTRATOR') as any).id;
       const officerRoleId = (getRole.get('MAINTENANCE_OFFICER') as any).id;
       const studentRoleId = (getRole.get('STUDENT_STAFF') as any).id;
 
-      const insertCategory = sqliteDb.prepare("INSERT OR IGNORE INTO RequestCategory (name) VALUES (?)");
+      const insertCategory = sqlite.prepare("INSERT OR IGNORE INTO RequestCategory (name) VALUES (?)");
       ['Faulty Electricity', 'Damaged Furniture', 'Leaking Pipes', 'Internet Problems', 'Classroom Equipment', 'Hostel Maintenance'].forEach((cat) => insertCategory.run(cat));
 
-      const insertUser = sqliteDb.prepare("INSERT OR IGNORE INTO User (email, username, password, fullName, roleId) VALUES (?, ?, ?, ?, ?)");
+      const insertUser = sqlite.prepare("INSERT OR IGNORE INTO User (email, username, password, fullName, roleId) VALUES (?, ?, ?, ?, ?)");
       insertUser.run('admin@miva.edu', 'admin', hashPassword('admin123'), 'Principal Administrator', adminRoleId);
       insertUser.run('officer@miva.edu', 'officer', hashPassword('officer123'), 'John Doe (Maintenance)', officerRoleId);
       insertUser.run('student@miva.edu', 'student', hashPassword('student123'), 'Alice Smith (Student)', studentRoleId);
