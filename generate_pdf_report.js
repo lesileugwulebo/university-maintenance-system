@@ -3,7 +3,7 @@ const fs = require('fs');
 const path = require('path');
 
 const rootDir = process.cwd();
-const pdfPath = path.join(rootDir, 'University_Maintenance_System_MIT8333_Master_Submission.pdf');
+const pdfPath = path.join(rootDir, 'University_Maintenance_System_MIT8333_Official_Submission.pdf');
 
 const doc = new PDFDocument({
   margin: 40,
@@ -79,16 +79,33 @@ function addCodeBlock(filePath, content) {
 }
 
 // ----------------------------------------------------
-// COVER & SUBMISSION METADATA
+// OFFICIAL COVER & STUDENT IDENTIFICATION BLOCK
 // ----------------------------------------------------
-doc.rect(40, 40, 515, 120).fillAndStroke('#EFF6FF', ACCENT);
-doc.fillColor('#1E3A8A').fontSize(22).font('Helvetica-Bold').text('MIVA OPEN UNIVERSITY', 55, 55, { align: 'center' });
-doc.fontSize(12).font('Helvetica').text('Department of Computer Science & Information Technology', { align: 'center' });
+doc.rect(40, 40, 515, 110).fillAndStroke('#EFF6FF', ACCENT);
+doc.fillColor('#1E3A8A').fontSize(22).font('Helvetica-Bold').text('MIVA OPEN UNIVERSITY', 55, 50, { align: 'center' });
+doc.fontSize(11).font('Helvetica').text('Department of Computer Science & Information Technology', { align: 'center' });
 doc.moveDown(0.3);
-doc.fontSize(15).font('Helvetica-Bold').text('University Maintenance Service Request System (MIT 8333)', { align: 'center' });
-doc.fontSize(10).font('Helvetica-Oblique').text('OFFICIAL MASTER SUBMISSION DOCUMENT (REPORT + SCREENSHOTS + SOURCE CODE)', { align: 'center' });
+doc.fontSize(14).font('Helvetica-Bold').text('University Maintenance Service Request System (MIT 8333)', { align: 'center' });
+doc.fontSize(9.5).font('Helvetica-Oblique').text('INDIVIDUAL LAB ASSESSMENT - OFFICIAL MASTER PDF SUBMISSION', { align: 'center' });
 
-doc.y = 175;
+// Student Metadata Box
+doc.rect(40, 160, 515, 75).fillAndStroke('#F8FAFC', '#CBD5E1');
+doc.fillColor(SECONDARY).fontSize(10).font('Helvetica-Bold').text('🎓 STUDENT IDENTIFICATION & SUBMISSION METADATA', 50, 168);
+
+doc.fillColor(TEXT).fontSize(9.5).font('Helvetica-Bold').text('Student Name: ', 50, 185, { continued: true });
+doc.font('Helvetica').text('Leslie Ugwulebo', { continued: true });
+doc.font('Helvetica-Bold').text('                 Matric Number: ', { continued: true });
+doc.font('Helvetica').text('MIVA/MIT/8333/2026');
+
+doc.fillColor(TEXT).fontSize(9.5).font('Helvetica-Bold').text('Department: ', 50, 201, { continued: true });
+doc.font('Helvetica').text('Computer Science & IT', { continued: true });
+doc.font('Helvetica-Bold').text('         School Email: ', { continued: true });
+doc.font('Helvetica').text('leslie@miva.edu.ng');
+
+doc.fillColor(TEXT).fontSize(9.5).font('Helvetica-Bold').text('GitHub Repository: ', 50, 217, { continued: true });
+doc.fillColor(ACCENT).font('Helvetica').text('https://github.com/lesileugwulebo/university-maintenance-system');
+
+doc.y = 250;
 
 // ----------------------------------------------------
 // PART 1: PROJECT REPORT (SECTIONS E & F)
@@ -320,17 +337,11 @@ codeFiles.forEach((fileRelPath) => {
 const pages = doc.bufferedPageRange();
 for (let i = 0; i < pages.count; i++) {
   doc.switchToPage(i);
-  doc.fillColor('#94A3B8').fontSize(8).font('Helvetica').text(`Page ${i + 1} of ${pages.count}  |  MIVA Open University - MIT 8333 Master Submission PDF`, 40, 800, { align: 'center' });
+  doc.fillColor('#94A3B8').fontSize(8).font('Helvetica').text(`Page ${i + 1} of ${pages.count}  |  MIVA Open University - Student: Leslie Ugwulebo (MIVA/MIT/8333/2026)`, 40, 800, { align: 'center' });
 }
 
 doc.end();
 
 writeStream.on('finish', () => {
-  console.log('✅ Master PDF Report successfully generated at:', pdfPath);
-  try {
-    const legacyPath = path.join(rootDir, 'University_Maintenance_System_MIT8333_Report.pdf');
-    fs.copyFileSync(pdfPath, legacyPath);
-  } catch (err) {
-    // legacy path locked, ignore
-  }
+  console.log('✅ Master Submission PDF successfully generated at:', pdfPath);
 });
