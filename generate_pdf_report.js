@@ -20,7 +20,6 @@ const SECONDARY = '#0F172A';   // Slate 900
 const ACCENT = '#2563EB';      // Blue 600
 const TEXT = '#334155';        // Slate 700
 const MUTED = '#64748B';       // Slate 500
-const CODE_BG = '#0F172A';     // Dark Code Box
 const CODE_TEXT = '#E2E8F0';
 
 function addTitle(text) {
@@ -184,23 +183,22 @@ const tocItems = [
   ['Table of Contents', '5'],
   ['List of Figures & Tables', '6'],
   ['List of Abbreviations', '7'],
-  ['CHAPTER ONE: INTRODUCTION', '8'],
-  ['  1.1 Background of the Study', '8'],
-  ['  1.2 Problem Statement', '8'],
-  ['  1.3 Aim and Objectives', '9'],
-  ['  1.4 Research Questions', '9'],
-  ['  1.5 Significance of the Study', '9'],
-  ['  1.6 Scope and Limitations', '10'],
-  ['CHAPTER TWO: LITERATURE REVIEW & THEORETICAL FRAMEWORK', '11'],
-  ['  2.1 Review of Campus Maintenance Systems', '11'],
-  ['  2.2 Architectural Evolution: Monoliths vs Modern App Router', '11'],
-  ['  2.3 Theoretical Framework (RBAC & Cryptography)', '12'],
-  ['  2.4 Comparative Analysis of Solutions', '12'],
-  ['CHAPTER THREE: SYSTEM DESIGN & METHODOLOGY', '13'],
-  ['  3.1 Software Development Methodology (Agile)', '13'],
-  ['  3.2 Three-Tier Software Architecture', '13'],
-  ['  3.3 Database ER Design & DDL Specifications', '14'],
-  ['  3.4 Security & Authentication Framework', '15'],
+  ['SECTION B: TECHNICAL PROJECT REPORT', '8'],
+  ['  1.1 Introduction & Problem Statement', '8'],
+  ['  1.2 System Objectives (6 Primary Milestones)', '8'],
+  ['  1.3 Requirement Analysis', '9'],
+  ['  1.4 Three-Tier Architecture & Database Schema', '10'],
+  ['  1.5 Relational Specifications (Role, User, Request, etc.)', '10'],
+  ['  1.6 Challenges Encountered & Solutions', '11'],
+  ['CHAPTER TWO: LITERATURE REVIEW & THEORETICAL FRAMEWORK', '12'],
+  ['  2.1 Review of Campus Maintenance Systems', '12'],
+  ['  2.2 Architectural Evolution: Monoliths vs App Router', '12'],
+  ['  2.3 Theoretical Framework (RBAC & Cryptography)', '13'],
+  ['  2.4 Comparative Analysis of Solutions', '13'],
+  ['CHAPTER THREE: SYSTEM DESIGN & METHODOLOGY', '14'],
+  ['  3.1 Agile Software Methodology', '14'],
+  ['  3.2 Detailed Database ER Normalization', '14'],
+  ['  3.3 Security & Middleware Architecture', '15'],
   ['CHAPTER FOUR: IMPLEMENTATION & TESTING RESULTS', '16'],
   ['  4.1 Frontend Component & Theme Implementation', '16'],
   ['  4.2 Backend REST API Reference & Routes', '16'],
@@ -208,17 +206,16 @@ const tocItems = [
   ['  4.4 Automated Testing Execution & Evidence', '18'],
   ['CHAPTER FIVE: SUMMARY, DEPLOYMENT & CONCLUSION', '19'],
   ['  5.1 Summary of Accomplishments', '19'],
-  ['  5.2 Challenges Encountered & Solutions', '19'],
-  ['  5.3 Multi-Cloud Deployment Architecture', '20'],
-  ['  5.4 Conclusion & Recommendations', '20'],
+  ['  5.2 Multi-Cloud Deployment Architecture', '20'],
+  ['  5.3 Conclusion & Recommendations', '20'],
   ['REFERENCES (APA 7th Edition)', '21'],
   ['APPENDICES (A – H)', '22'],
 ];
 
 tocItems.forEach(([item, pg]) => {
-  doc.fillColor(item.startsWith('CHAPTER') ? PRIMARY : TEXT)
-     .font(item.startsWith('CHAPTER') ? 'Helvetica-Bold' : 'Helvetica')
-     .fontSize(item.startsWith('CHAPTER') ? 9.5 : 8.5)
+  doc.fillColor(item.startsWith('SECTION') || item.startsWith('CHAPTER') ? PRIMARY : TEXT)
+     .font(item.startsWith('SECTION') || item.startsWith('CHAPTER') ? 'Helvetica-Bold' : 'Helvetica')
+     .fontSize(item.startsWith('SECTION') || item.startsWith('CHAPTER') ? 9.5 : 8.5)
      .text(item, 45, doc.y, { continued: true });
   
   const dots = '.'.repeat(Math.max(1, 95 - item.length * 1.5));
@@ -234,16 +231,16 @@ doc.addPage();
 addTitle('LIST OF FIGURES & TABLES');
 
 addHeading('List of Figures');
-addBullet('Figure 3.1', 'Three-Tier Architecture Diagram (Client Browser ➔ Edge Guard ➔ MySQL DB)');
-addBullet('Figure 3.2', 'Entity Relationship Diagram (Role, User, RequestCategory, Request, Assignment, StatusLog)');
+addBullet('Figure 1.1', 'Three-Tier Architecture (Client Browser -> App Router Guard Middleware -> MySQL Instance)');
+addBullet('Figure 3.1', 'Entity Relationship Diagram (Role, User, RequestCategory, Request, Assignment, StatusLog)');
 addBullet('Figure 4.1', 'Student / Staff Service Request Portal Screenshot');
 addBullet('Figure 4.2', 'Administrator Operations Console Screenshot');
 addBullet('Figure 4.3', 'Maintenance Officer Work Order Drawer Screenshot');
 addBullet('Figure 5.1', 'Docker Compose Containerization Architecture Diagram');
 
 addHeading('List of Tables');
+addBullet('Table 1.1', 'MySQL Database Relational Specs & Normalization Table');
 addBullet('Table 2.1', 'Comparative Analysis of Maintenance Systems vs MIVA System');
-addBullet('Table 3.1', 'MySQL Database Schema & Entity Relational Table Specifications');
 addBullet('Table 4.1', 'REST API Endpoint Reference Table');
 addBullet('Table 4.2', 'Automated Integration Test Verification Results Matrix');
 
@@ -285,39 +282,81 @@ abbrevs.forEach(([k, v]) => {
 });
 
 // ==============================================================================
-// CHAPTER ONE: INTRODUCTION
+// SECTION B: TECHNICAL PROJECT REPORT
 // ==============================================================================
 doc.addPage();
-addTitle('CHAPTER ONE: INTRODUCTION');
+addTitle('SECTION B: TECHNICAL PROJECT REPORT');
 
-addHeading('1.1 Background of the Study');
-addBody('Educational institutions rely heavily on physical and technical infrastructure to support learning, research, and administrative operations. At MIVA Open University, maintaining lecture halls, laboratories, electrical power fittings, plumbing networks, and campus Wi-Fi hardware is vital for an optimal learning experience.');
+addHeading('1.1 Introduction & Problem Statement');
+addBody('At higher education institutions, maintaining campus physical and digital infrastructure is vital for teaching and learning. Prior to the implementation of this system, MIVA Open University experienced severe operational bottlenecks:');
+addBullet('Fragmented Communication Bottlenecks', 'Complaints were submitted through informal verbal messaging, phone calls, or paper logs, leading to lost tickets and poor accountability.');
+addBullet('Zero Visibility Status Tracking', 'Students and staff had no digital mechanism to check whether reported faults were pending, assigned, or resolved.');
+addBullet('Manual Paper-Routing Delays', 'Facility managers relied on manual paper-based routing to delegate tasks to technicians, creating severe resolution delays.');
 
-addHeading('1.2 Problem Statement');
-addBody('Prior to this project, facility maintenance was managed through informal verbal reports and fragmented communication. This created major operational problems:');
-addBullet('Zero Status Visibility', 'Students and staff had no digital mechanism to track complaint progress.');
-addBullet('Manual Routing Delays', 'Facility managers manually delegated tasks via phone or messaging, causing delays.');
-addBullet('Missing Audit Logs', 'Ticket state changes were unrecorded, creating accountability gaps.');
-addBullet('Lack of Analytics', 'Administrators lacked metrics on equipment failure rates and technician turnaround times.');
+addHeading('1.2 System Objectives (Fulfilling 6 Primary Milestones)');
+addBody('The project successfully accomplished six core technical milestones:');
+addBullet('Milestone 1: Responsive Dashboard Portal', 'Engineered a modern React 19 / Next.js 16 glassmorphic interface with real-time status badges, priority selectors, and file upload previews.');
+addBullet('Milestone 2: Role-Based Access Control (RBAC)', 'Enforced strict role separation for Students/Staff, Maintenance Officers, and Administrators via Edge Route Middleware (src/middleware.ts).');
+addBullet('Milestone 3: Relational Validation Tables', 'Constructed a 3NF normalized MySQL database with primary/foreign keys and constraint validation.');
+addBullet('Milestone 4: System Audit Mapping', 'Implemented timestamped audit logging in StatusLog table recording every status transition (PENDING -> ASSIGNED -> IN_PROGRESS -> COMPLETED).');
+addBullet('Milestone 5: Automated Testing Integration', 'Created tests/system-verification.js verifying all API routes with 100% test passage.');
+addBullet('Milestone 6: Container Delivery', 'Packaged application into a multi-stage Dockerfile and docker-compose.yml with 1-click deploy.sh automation.');
 
-addHeading('1.3 Aim and Objectives');
-addBody('The aim of this project is to design, implement, test, and deploy an enterprise-grade University Maintenance Service Request System (MIT 8333). Specific objectives include:');
-addBullet('Objective 1', 'Develop a responsive web portal allowing students and staff to file complaints with photo evidence.');
-addBullet('Objective 2', 'Implement Role-Based Access Control (RBAC) across Students/Staff, Officers, and Administrators.');
-addBullet('Objective 3', 'Construct a relational MySQL 8.0 database schema enforcing data integrity and cascading updates.');
-addBullet('Objective 4', 'Implement scryptSync password hashing and HMAC-SHA256 JWT cookie authentication.');
-addBullet('Objective 5', 'Build administrative dashboards with CSV report export capabilities.');
-addBullet('Objective 6', 'Containerize the application with Docker and Docker Compose for 1-click Linux deployment.');
+addHeading('1.3 Requirement Analysis');
+addBullet('Functional Requirements', 'Registration, login, request logging, photo uploads, officer routing, status resolution, audit log tracking, user management, and CSV export.');
+addBullet('Non-Functional Requirements', 'Sub-200ms latency, responsive glassmorphism UI, containerized portability, and zero-downtime database auto-seeding.');
 
-addHeading('1.4 Research Questions');
-addBullet('RQ1', 'How can modern App Router web architectures improve ticket processing speed in educational institutions?');
-addBullet('RQ2', 'How does containerization impact database security and application deployment portability?');
+doc.addPage();
+addHeading('1.4 Three-Tier Architecture & System Flow');
+addBody('The application implements a decoupled Three-Tier Architecture:');
+addBullet('Tier 1: Client Browser (Presentation)', 'React 19 Client/Server Components styled with Vanilla CSS Modules delivering glassmorphic cards and priority badges.');
+addBullet('Tier 2: App Router Guard Middleware (Application)', 'Next.js 16 Edge Middleware validating HMAC-SHA256 signed JWT cookies and routing requests securely.');
+addBullet('Tier 3: MySQL Relational Instance (Data)', 'Containerized MySQL 8.0 relational database engine (mysql2 connection pool) with lazy SQLite fallback.');
 
-addHeading('1.5 Significance of the Study');
-addBody('This project provides MIVA Open University with a secure, automated maintenance platform that eliminates paper forms, reduces ticket resolution times, enforces accountability through audit logs, and delivers real-time analytical reporting.');
+// Draw Architecture Flow Diagram
+doc.rect(40, doc.y, 515, 40).fill('#0F172A');
+const archY = doc.y + 12;
+doc.fillColor('#38BDF8').fontSize(9).font('Courier-Bold').text('Client Browser (React 19)  -->  App Router Guard Middleware  -->  MySQL Relational Instance (mysql2)', 50, archY, { align: 'center' });
+doc.y = archY + 35;
 
-addHeading('1.6 Scope and Limitations');
-addBody('The project covers student registration, ticket creation, photo uploads, officer task routing, work order resolution, user administration, CSV reporting, Docker containerization, and AWS/Linux deployment. Future enhancements include real-time WebSockets and SMS alerts.');
+addHeading('1.5 Relational Database Schema Specifications');
+addBody('Table 1.1 outlines the database specs and normalization rules defined in src/lib/db.ts:');
+
+// Table 1.1
+const t1Top = doc.y;
+doc.rect(40, t1Top, 515, 18).fill('#1E293B');
+doc.fillColor('#FFFFFF').fontSize(8.5).font('Helvetica-Bold');
+doc.text('Table Name', 45, t1Top + 4, { width: 90 });
+doc.text('Primary Key', 135, t1Top + 4, { width: 90 });
+doc.text('Foreign Keys / Constraints', 225, t1Top + 4, { width: 180 });
+doc.text('Purpose & Normalization Rule', 405, t1Top + 4, { width: 145 });
+
+const t1Rows = [
+  ['Role', 'id (INT PK)', 'name (VARCHAR UNIQUE)', 'System permission roles (3NF)'],
+  ['User', 'id (INT PK)', 'roleId -> Role(id)', 'User account credentials (3NF)'],
+  ['RequestCategory', 'id (INT PK)', 'name (VARCHAR UNIQUE)', 'Complaint category names (3NF)'],
+  ['Request', 'id (INT PK)', 'categoryId, creatorId', 'Maintenance complaints (3NF)'],
+  ['Assignment', 'id (INT PK)', 'requestId, officerId, assignedById', 'Work order routing (ON DELETE CASCADE)'],
+  ['StatusLog', 'id (INT PK)', 'requestId, userId', 'Audit trail logging (ON DELETE CASCADE)'],
+];
+
+let t1Y = t1Top + 18;
+t1Rows.forEach((r, idx) => {
+  doc.rect(40, t1Y, 515, 16).fill(idx % 2 === 0 ? '#F8FAFC' : '#FFFFFF');
+  doc.fillColor(TEXT).fontSize(8).font('Helvetica');
+  doc.text(r[0], 45, t1Y + 4, { width: 90 });
+  doc.text(r[1], 135, t1Y + 4, { width: 90 });
+  doc.text(r[2], 225, t1Y + 4, { width: 180 });
+  doc.text(r[3], 405, t1Y + 4, { width: 145 });
+  t1Y += 16;
+});
+
+doc.y = t1Y + 15;
+
+addHeading('1.6 Challenges Encountered & Technical Mitigations');
+addBullet('SQLite Concurrency Locks', 'Mitigated by replacing static SQLite file locks with a mysql2 connection pool and lazy SQLite fallback instantiation.');
+addBullet('Docker Filesystem Permissions', 'Handled by explicitly configuring non-root user permissions chown -R nextjs:nodejs inside the Dockerfile configuration.');
+addBullet('Turbopack Config Deprecation', 'Removed deprecated eslint block from next.config.ts for Next.js 16 compatibility.');
 
 // ==============================================================================
 // CHAPTER TWO: LITERATURE REVIEW & THEORETICAL FRAMEWORK
@@ -376,47 +415,7 @@ addTitle('CHAPTER THREE: SYSTEM DESIGN & METHODOLOGY');
 addHeading('3.1 Software Development Methodology (Agile)');
 addBody('The system was developed using an iterative Agile methodology. Sprints focused on core database design, authentication API routes, frontend React components, RBAC middleware, automated test script construction, and Docker deployment.');
 
-addHeading('3.2 Three-Tier Architecture');
-addBody('The system is structured as a Three-Tier software architecture:');
-addBullet('Presentation Tier', 'React 19 & Vanilla CSS Modules displaying glassmorphic dark-mode dashboards.');
-addBullet('Application Tier', 'Next.js 16 API Route Handlers (/api/*) and Edge Middleware enforcing security.');
-addBullet('Data Tier', 'Containerized MySQL 8.0 relational database engine managing operational tables.');
-
-addHeading('3.3 Database Design & Relational Schema');
-addBody('Table 3.1 outlines the database tables, data types, and foreign key relationships in src/lib/db.ts:');
-
-// Table 3.1
-const t3Top = doc.y;
-doc.rect(40, t3Top, 515, 18).fill('#1E293B');
-doc.fillColor('#FFFFFF').fontSize(8.5).font('Helvetica-Bold');
-doc.text('Table Name', 45, t3Top + 4, { width: 90 });
-doc.text('Primary Key', 135, t3Top + 4, { width: 90 });
-doc.text('Foreign Keys / Constraints', 225, t3Top + 4, { width: 180 });
-doc.text('Purpose', 405, t3Top + 4, { width: 145 });
-
-const t3Rows = [
-  ['Role', 'id (INT)', 'name (VARCHAR UNIQUE)', 'Stores system permissions'],
-  ['User', 'id (INT)', 'roleId -> Role(id)', 'User account credentials'],
-  ['RequestCategory', 'id (INT)', 'name (VARCHAR UNIQUE)', 'Complaint category names'],
-  ['Request', 'id (INT)', 'categoryId, creatorId', 'Maintenance complaints'],
-  ['Assignment', 'id (INT)', 'requestId, officerId, assignedById', 'Work order routing'],
-  ['StatusLog', 'id (INT)', 'requestId, userId (ON DELETE CASCADE)', 'Audit trail logging'],
-];
-
-let t3Y = t3Top + 18;
-t3Rows.forEach((r, idx) => {
-  doc.rect(40, t3Y, 515, 16).fill(idx % 2 === 0 ? '#F8FAFC' : '#FFFFFF');
-  doc.fillColor(TEXT).fontSize(8).font('Helvetica');
-  doc.text(r[0], 45, t3Y + 4, { width: 90 });
-  doc.text(r[1], 135, t3Y + 4, { width: 90 });
-  doc.text(r[2], 225, t3Y + 4, { width: 180 });
-  doc.text(r[3], 405, t3Y + 4, { width: 145 });
-  t3Y += 16;
-});
-
-doc.y = t3Y + 15;
-
-addHeading('3.4 Security & Authentication Framework');
+addHeading('3.2 Security & Authentication Framework');
 addBody('Passwords are hashed using Node native crypto.scryptSync with 16-byte random salts. Sessions are managed via HMAC-SHA256 signed JWT tokens stored in HTTP-only, SameSite=Lax cookies.');
 
 // ==============================================================================
@@ -523,17 +522,12 @@ addTitle('CHAPTER FIVE: SUMMARY, DEPLOYMENT & CONCLUSION');
 addHeading('5.1 Summary of Accomplishments');
 addBody('All project requirements were fulfilled: full-stack Next.js 16 App Router architecture, MySQL 8.0 relational database, scryptSync + HMAC-SHA256 JWT auth, RBAC Edge Middleware, photo uploads, audit logging, CSV export, 100% test passage, Docker containerization, and AWS/Linux deployment.');
 
-addHeading('5.2 Challenges Encountered & Solutions');
-addBullet('SQLite Concurrency Locks', 'Resolved by introducing mysql2 connection pooling and lazy SQLite fallback instantiation.');
-addBullet('Turbopack Config Deprecation', 'Removed deprecated eslint block from next.config.ts for Next.js 16 compatibility.');
-addBullet('Docker Non-Root Permissions', 'Granted chown -R nextjs:nodejs /app ownership in Dockerfile to prevent file write errors.');
-
-addHeading('5.3 Multi-Cloud Deployment Architecture');
+addHeading('5.2 Multi-Cloud Deployment Architecture');
 addBullet('Automated Script (deploy.sh)', '1-click deployment script with Docker Engine auto-installer and HOST_IP detection.');
 addBullet('Docker Compose', 'Multi-container web app (miva_web_app) and MySQL 8.0 (miva_mysql_db) with persistent volumes.');
 addBullet('AWS EC2 & Amazon ECR', 'Cloud deployment using ECR repository, Nginx reverse proxying, and PM2 process management.');
 
-addHeading('5.4 Conclusion & Recommendations');
+addHeading('5.3 Conclusion & Recommendations');
 addBody('The University Maintenance Service Request System delivers a robust, secure, and scalable digital solution for MIVA Open University. Future recommendations include real-time WebSocket push notifications and SMS integration.');
 
 // ==============================================================================

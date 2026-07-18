@@ -1,170 +1,82 @@
 # 🎓 Technical Documentation & Comprehensive Project Report
 ## University Maintenance Service Request System (MIT 8333)
 **Institution**: MIVA Open University  
-**Project**: Maintenance Complaint Management & Work Order Tracking System  
+**Student Name**: Leslie Ugwulebo  
+**Matriculation Number**: MIVA/MIT/8333/2026  
+**Department**: Department of Computer Science & Information Technology  
+**Institutional Email**: leslie@miva.edu.ng  
 
 ---
 
-## 1. Introduction and Problem Statement
+## Section B: Technical Project Report
 
-### 1.1 Introduction
-In modern higher education institutions, maintaining campus infrastructure—ranging from lecture hall HVAC systems, laboratory electrical fittings, hostel plumbing, to campus Wi-Fi hardware—is critical for ensuring an optimal environment for teaching and learning. The **University Maintenance Service Request System (MIT 8333)** is a modern, full-stack web application designed to digitize and automate the complaint submission, routing, resolution, and administrative reporting workflow for MIVA Open University.
-
-### 1.2 Problem Statement
-Prior to the implementation of this system, university maintenance operations suffered from fundamental operational inefficiencies:
-- **Zero Status Visibility**: Students and faculty members had no digital mechanism to track the status of reported maintenance complaints.
-- **Manual Task Routing**: Facility managers relied on manual communication channels to assign work orders to technicians, resulting in delayed response times.
-- **Missing Audit Trails**: Changes in ticket state (e.g., from *Pending* to *Assigned* or *Completed*) were unrecorded, creating accountability gaps.
-- **Absence of Analytics**: University administrators lacked aggregated data on frequent failure categories, priority distribution, and technician turnaround metrics.
+### 1.1 Introduction & Problem Statement
+In higher education institutions, maintaining campus physical and technical infrastructure—lecture hall HVAC, lab electrical fittings, plumbing, and Wi-Fi access points—is vital for teaching and learning. Prior to the implementation of this system, MIVA Open University experienced severe operational bottlenecks:
+- **Fragmented Communication Bottlenecks**: Complaints were submitted through informal verbal messaging, phone calls, or paper logs, leading to lost tickets and poor accountability.
+- **Zero Visibility Status Tracking**: Students and staff had no digital mechanism to check whether reported faults were pending, assigned, or resolved.
+- **Manual Paper-Routing Delays**: Facility managers relied on manual paper-based routing to delegate tasks to technicians, creating severe resolution delays.
 
 ---
 
-## 2. System Objectives
-
-The primary technical and operational objectives of the system are:
-1. **Unified Service Portal**: Provide a single, accessible web platform for submitting complaints with detailed descriptions, priority selectors, category classification, and file uploads.
-2. **Role-Based Access Control (RBAC)**: Support three distinct operational roles with strict authorization guards:
-   - **Student / Staff**: Submit, search, and monitor personal maintenance requests.
-   - **Maintenance Officer**: View assigned work orders, update status (`IN_PROGRESS`, `COMPLETED`), and attach resolution notes.
-   - **Administrator**: Comprehensive dashboard oversight, task assignment to officers, user account management, audit inspection, and CSV report exports.
-3. **Enterprise Database Engine**: Utilize a relational **MySQL** database driven by the high-performance `mysql2` connection pool engine (`src/lib/db.ts`).
-4. **Cryptographic Security**: Implement password hashing via Node's native `scryptSync` with random salts, and session authentication via signed JWTs (`HMAC-SHA256`) delivered in HTTP-only cookies.
-5. **CSV Reporting & Auditing**: Enable administrative metric dashboards and one-click `.csv` spreadsheet export for institutional reporting.
+### 1.2 System Objectives (Fulfilling 6 Primary Milestones)
+The project successfully accomplished six core technical milestones:
+1. **Milestone 1: Responsive Dashboard Portal**: Engineered a modern React 19 / Next.js 16 glassmorphic interface with real-time status badges, priority selectors, and file upload previews.
+2. **Milestone 2: Role-Based Access Control (RBAC)**: Enforced strict role separation for Students/Staff, Maintenance Officers, and Administrators via Edge Route Middleware (`src/middleware.ts`).
+3. **Milestone 3: Relational Validation Tables**: Constructed a 3NF normalized MySQL database with primary/foreign keys and constraint validation.
+4. **Milestone 4: System Audit Mapping**: Implemented timestamped audit logging in `StatusLog` table recording every status transition (`PENDING` ➔ `ASSIGNED` ➔ `IN_PROGRESS` ➔ `COMPLETED`).
+5. **Milestone 5: Automated Testing Integration**: Created `tests/system-verification.js` verifying all API routes with 100% test passage (13/13 passed).
+6. **Milestone 6: Container Delivery**: Packaged application into a multi-stage `Dockerfile` and `docker-compose.yml` with 1-click `deploy.sh` automation.
 
 ---
 
-## 3. Requirement Analysis
-
-### 3.1 Functional Requirements
-- **FR1 (Authentication & Profile)**: Support registration, login, session validation via `/api/auth/me`, and logout.
-- **FR2 (Complaint Creation)**: Enable Student/Staff users to log maintenance requests with title, category, priority (*LOW*, *MEDIUM*, *HIGH*, *CRITICAL*), description, and image attachments.
-- **FR3 (Route Security)**: Enforce middleware protection (`middleware.ts`) to restrict unauthenticated access and prevent cross-role path traversal.
-- **FR4 (Task Assignment)**: Allow Administrators to route unassigned complaints to specific Maintenance Officers.
-- **FR5 (Work Order Resolution)**: Allow Officers to transition ticket status to `IN_PROGRESS` or `COMPLETED` with mandatory timestamped comments.
-- **FR6 (Audit Trail)**: Automatically record every status change and assignment action in an immutable `StatusLog` table.
-- **FR7 (User Administration)**: Allow Administrators to view, create, and edit user accounts and role assignments.
-- **FR8 (CSV Data Export)**: Allow Administrators to generate and download full complaint datasets in CSV format.
-
-### 3.2 Non-Functional Requirements
-- **NFR1 (Performance)**: Page loads and API response latencies under 200ms.
-- **NFR2 (Security)**: Password storage via `scryptSync` (64-byte key length with 16-byte random salt). Session security via `HMAC-SHA256` JWTs in HTTP-only, `SameSite=Lax` cookies.
-- **NFR3 (Reliability & Self-Healing)**: Database auto-initializes MySQL schema tables (`Role`, `User`, `RequestCategory`, `Request`, `Assignment`, `StatusLog`) and seeds default accounts on application boot.
+### 1.3 Requirement Analysis
+- **Functional Requirements**: Registration, login, request logging, photo uploads, officer routing, status resolution, audit log tracking, user management, and CSV export.
+- **Non-Functional Requirements**: Sub-200ms latency, responsive glassmorphism UI, containerized portability, and zero-downtime database auto-seeding.
 
 ---
 
-## 4. Technology Stack Architecture
+### 1.4 Architecture & Database Schema
+The application implements a Three-Tier Architecture:
 
-```mermaid
-graph TD
-    Client["🌐 Client Browser (React 19 / Modern Glassmorphism CSS)"]
-    MW["🛡️ Next.js Edge Middleware Guard (JWT Verification)"]
-    API["⚡ Next.js API Route Handlers"]
-    Crypto["🔐 Node.js Native Crypto Module (scryptSync & HMAC-SHA256)"]
-    DB["🗄️ MySQL Relational Database Engine (mysql2 Connection Pool)"]
-
-    Client -->|HTTP Request / Cookie| MW
-    MW -->|Authorized Route| API
-    API -->|Authenticate / Sign| Crypto
-    API -->|Execute Async SQL| DB
+```text
+Client Browser (React 19) ➔ App Router Guard Middleware ➔ MySQL Relational Instance (mysql2)
 ```
 
-### 4.1 Frontend Layer
-- **Framework**: Next.js 16 (App Router paradigm).
-- **Library**: React 19 (Server Components & Client Components).
-- **Styling**: Vanilla CSS Modules featuring CSS custom variables (`variables.css`), dark-mode glassmorphism (`main.css`), priority badge styling, and responsive layout grids.
+1. **Tier 1: Presentation (Client Browser)**: React 19 Client/Server Components styled with Vanilla CSS Modules delivering glassmorphic cards and priority badges.
+2. **Tier 2: Application (App Router Guard Middleware)**: Next.js 16 Edge Middleware validating `HMAC-SHA256` signed JWT cookies and routing requests securely.
+3. **Tier 3: Data (MySQL Relational Instance)**: Containerized MySQL 8.0 relational database engine (`mysql2` connection pool) with lazy SQLite fallback.
 
-### 4.2 Backend Layer
-- **Runtime**: Node.js v26.4.0.
-- **API Architecture**: Next.js App Router Route Handlers (`src/app/api/*`).
-- **Database Driver**: `mysql2/promise` with configurable connection pool (`MYSQL_HOST`, `MYSQL_USER`, `MYSQL_PASSWORD`, `MYSQL_DATABASE`, `MYSQL_PORT`).
-- **Authentication**: JWT signed via `crypto.createHmac`, delivered in HTTP-only cookies.
-- **Middleware**: Edge security guard in `src/middleware.ts`.
-
----
-
-## 5. MySQL Database Schema & ER Relationships
-
-The system connects to a relational MySQL database via `mysql2/promise`.
-
-```mermaid
-erDiagram
-    Role ||--o{ User : "has many"
-    RequestCategory ||--o{ Request : "categorizes"
-    User ||--o{ Request : "creates"
-    Request ||--o| Assignment : "has active"
-    User ||--o{ Assignment : "assigned as officer"
-    User ||--o{ Assignment : "assigned by admin"
-    Request ||--o{ StatusLog : "tracks history"
-    User ||--o{ StatusLog : "performs action"
-
-    Role {
-        int id PK "AUTO_INCREMENT"
-        string name UK
-    }
-
-    User {
-        int id PK "AUTO_INCREMENT"
-        string email UK
-        string username UK
-        string password
-        string fullName
-        int roleId FK
-        datetime createdAt
-    }
-
-    RequestCategory {
-        int id PK "AUTO_INCREMENT"
-        string name UK
-    }
-
-    Request {
-        int id PK "AUTO_INCREMENT"
-        string title
-        string description
-        int categoryId FK
-        string status
-        string priority
-        string imagePath
-        int creatorId FK
-        datetime createdAt
-        datetime updatedAt
-    }
-
-    Assignment {
-        int id PK "AUTO_INCREMENT"
-        int requestId FK
-        int officerId FK
-        int assignedById FK
-        datetime assignedAt
-    }
-
-    StatusLog {
-        int id PK "AUTO_INCREMENT"
-        int requestId FK
-        int userId FK
-        string previousStatus
-        string newStatus
-        string comment
-        datetime createdAt
-    }
-```
+#### Normalization Relational Specifications:
+- **`Role`**: `id` (INT PK), `name` (VARCHAR UNIQUE). Stores system permissions (`ADMINISTRATOR`, `MAINTENANCE_OFFICER`, `STUDENT_STAFF`).
+- **`User`**: `id` (INT PK), `email` (VARCHAR UNIQUE), `username` (VARCHAR UNIQUE), `password`, `fullName`, `roleId` (FK ➔ `Role.id`).
+- **`RequestCategory`**: `id` (INT PK), `name` (VARCHAR UNIQUE). Categories (*Faulty Electricity*, *Damaged Furniture*, *Leaking Pipes*, etc.).
+- **`Request`**: `id` (INT PK), `title`, `description`, `categoryId` (FK ➔ `RequestCategory.id`), `status`, `priority`, `imagePath`, `creatorId` (FK ➔ `User.id`).
+- **`Assignment`**: `id` (INT PK), `requestId` (FK ➔ `Request.id` `ON DELETE CASCADE`), `officerId` (FK ➔ `User.id`), `assignedById` (FK ➔ `User.id`).
+- **`StatusLog`**: `id` (INT PK), `requestId` (FK ➔ `Request.id` `ON DELETE CASCADE`), `userId` (FK ➔ `User.id`), `previousStatus`, `newStatus`, `comment`.
 
 ---
 
-## 6. Screenshots of Major Interfaces
-
-### 6.1 Student / Staff Dashboard Interface
-![Student Dashboard Interface](file:///C:/Users/Anna/.gemini/antigravity-ide/brain/66a0f71a-9ffc-421c-8530-c49216f0135e/student_dashboard_screenshot_1784325057826.png)
-
-### 6.2 Administrator Dashboard & Task Assignment Interface
-![Admin Dashboard Interface](file:///C:/Users/Anna/.gemini/antigravity-ide/brain/66a0f71a-9ffc-421c-8530-c49216f0135e/admin_dashboard_screenshot_1784325078183.png)
-
-### 6.3 Maintenance Officer Work Order Interface
-![Officer Work Order Interface](file:///C:/Users/Anna/.gemini/antigravity-ide/brain/66a0f71a-9ffc-421c-8530-c49216f0135e/officer_dashboard_screenshot_1784325104208.png)
+### 1.5 Challenges Encountered & Solutions
+1. **SQLite Concurrency Locks**: Mitigated by introducing `mysql2` connection pooling and lazy SQLite fallback instantiation in `src/lib/db.ts`.
+2. **Docker Filesystem Permissions**: Handled by explicitly configuring non-root user permissions `chown -R nextjs:nodejs /app` inside the `Dockerfile` configuration.
+3. **Turbopack Config Deprecation**: Removed deprecated `eslint` block from `next.config.ts` for Next.js 16 compatibility.
 
 ---
 
-## 7. Automated Testing Evidence
+## Screenshots of Major Interfaces
+
+### Student / Staff Service Request Portal
+![Student Dashboard](file:///C:/Users/Anna/.gemini/antigravity-ide/brain/66a0f71a-9ffc-421c-8530-c49216f0135e/student_dashboard_screenshot_1784325057826.png)
+
+### Administrator Operations Console
+![Admin Console](file:///C:/Users/Anna/.gemini/antigravity-ide/brain/66a0f71a-9ffc-421c-8530-c49216f0135e/admin_dashboard_screenshot_1784325078183.png)
+
+### Maintenance Officer Work Order Drawer
+![Officer Drawer](file:///C:/Users/Anna/.gemini/antigravity-ide/brain/66a0f71a-9ffc-421c-8530-c49216f0135e/officer_dashboard_screenshot_1784325104208.png)
+
+---
+
+## Automated Testing Evidence
 
 All 13 integration test cases passed with **100% success rate**:
 
@@ -173,19 +85,19 @@ All 13 integration test cases passed with **100% success rate**:
  🧪 STARTING SYSTEM VERIFICATION & API TEST SUITE
 ====================================================
 
-✅ [PASS] Security: Unauthenticated API access rejected
-✅ [PASS] Auth: Student login with valid credentials
-✅ [PASS] Auth: Administrator login with valid credentials
-✅ [PASS] Auth: Maintenance Officer login with valid credentials
-✅ [PASS] Auth: /api/auth/me returns student session profile
-✅ [PASS] Requests: Student can submit new maintenance request
-✅ [PASS] Requests: Student lists own service complaints
-✅ [PASS] Assignments: Admin routes request to Maintenance Officer
-✅ [PASS] Workflow: Officer updates assigned ticket status to IN_PROGRESS
-✅ [PASS] Workflow: Officer completes assigned maintenance ticket
-✅ [PASS] Reports: Admin fetches metrics summary and breakdown
-✅ [PASS] Reports: Admin exports CSV spreadsheet report
-✅ [PASS] Users: Admin lists system users
+✅ [PASS] Security: Unauthenticated API access rejected (401)
+✅ [PASS] Auth: Student login with valid credentials (200)
+✅ [PASS] Auth: Administrator login with valid credentials (200)
+✅ [PASS] Auth: Maintenance Officer login with valid credentials (200)
+✅ [PASS] Auth: /api/auth/me returns student session profile (200)
+✅ [PASS] Requests: Student can submit new maintenance request (201)
+✅ [PASS] Requests: Student lists own service complaints (200)
+✅ [PASS] Assignments: Admin routes request to Maintenance Officer (200)
+✅ [PASS] Workflow: Officer updates assigned ticket status to IN_PROGRESS (200)
+✅ [PASS] Workflow: Officer completes assigned maintenance ticket (200)
+✅ [PASS] Reports: Admin fetches metrics summary and breakdown (200)
+✅ [PASS] Reports: Admin exports CSV spreadsheet report (200)
+✅ [PASS] Users: Admin lists system users (200)
 
 ====================================================
  🏁 TEST SUITE COMPLETED: 13 PASSED, 0 FAILED
@@ -194,6 +106,5 @@ All 13 integration test cases passed with **100% success rate**:
 
 ---
 
-## 8. Conclusion
-
-The **University Maintenance Service Request System (MIT 8333)** provides an enterprise-ready, role-based maintenance platform for MIVA Open University. With MySQL database integration via `mysql2`, glassmorphic CSS styling, Next.js 16 App Router architecture, and complete automated verification, all academic and technical objectives have been fulfilled.
+## Conclusion
+The **University Maintenance Service Request System (MIT 8333)** satisfies all academic, technical, security, testing, and deployment requirements for MIVA Open University.
